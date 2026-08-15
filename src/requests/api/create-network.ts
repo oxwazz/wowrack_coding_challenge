@@ -1,7 +1,13 @@
 import type { JsonObject } from "../../types.js";
 import type { FakeCloudStackClient } from "../client.js";
 import { requiredObject } from "../client.js";
-import type { ApiControlQuery } from "./shared.js";
+import type { ApiControlQuery, ApiJobSpec } from "./shared.js";
+
+export const createNetworkSpec = {
+  id: "subnet",
+  handler: "create_subnet",
+  dependsOn: ["vpc"],
+} as const satisfies ApiJobSpec;
 
 export type CreateNetworkQuery = ApiControlQuery & Readonly<{
   vpcid: string;

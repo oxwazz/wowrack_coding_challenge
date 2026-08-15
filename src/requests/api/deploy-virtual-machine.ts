@@ -1,7 +1,13 @@
 import type { JsonObject } from "../../types.js";
 import type { FakeCloudStackClient } from "../client.js";
-import type { ApiControlQuery } from "./shared.js";
+import type { ApiControlQuery, ApiJobSpec } from "./shared.js";
 import { runAsyncObject } from "./shared.js";
+
+export const deployVirtualMachineSpec = {
+  id: "vm",
+  handler: "deploy_vm",
+  dependsOn: ["attach-acl"],
+} as const satisfies ApiJobSpec;
 
 export type DeployVirtualMachineQuery = ApiControlQuery & Readonly<{
   networkids: string;

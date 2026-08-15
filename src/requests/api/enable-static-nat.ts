@@ -1,6 +1,12 @@
 import type { JsonObject } from "../../types.js";
 import type { FakeCloudStackClient } from "../client.js";
-import type { ApiControlQuery } from "./shared.js";
+import type { ApiControlQuery, ApiJobSpec } from "./shared.js";
+
+export const enableStaticNatSpec = {
+  id: "static-nat",
+  handler: "enable_static_nat",
+  dependsOn: ["vm", "public-ip"],
+} as const satisfies ApiJobSpec;
 
 export type EnableStaticNatQuery = ApiControlQuery & Readonly<{
   networkid: string;

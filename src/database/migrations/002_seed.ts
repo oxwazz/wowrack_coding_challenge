@@ -1,25 +1,14 @@
 import type { Kysely } from "kysely";
-import type { JobStepDefinition } from "../../types.js";
 import type { Database } from "../types.js";
 
 const withPublicIpId = "deploy-vm-with-public-ip";
 const withoutPublicIpId = "deploy-vm-without-public-ip";
 
-// Both deployment variants share the infrastructure path through VM creation.
-const baseSteps: JobStepDefinition[] = [
-  { id: "vpc", handler: "create_vpc", dependsOn: [] },
-  { id: "subnet", handler: "create_subnet", dependsOn: ["vpc"] },
-  { id: "acl-list", handler: "create_acl_list", dependsOn: ["vpc"] },
-  { id: "acl-rule", handler: "create_acl_rule", dependsOn: ["acl-list"] },
-  { id: "attach-acl", handler: "attach_acl_list", dependsOn: ["subnet", "acl-rule"] },
-  { id: "vm", handler: "deploy_vm", dependsOn: ["attach-acl"] },
-];
+// The database selects APIs only; their handlers and dependencies live in API specs.
+const baseApiIds = ["vpc", "subnet", "acl-list", "acl-rule", "attach-acl", "vm"];
 
 // Public-IP deployment appends NAT-specific work without duplicating the base DAG.
-const publicIpSteps: JobStepDefinition[] = [
-  { id: "public-ip", handler: "list_public_ip", dependsOn: ["vm"] },
-  { id: "static-nat", handler: "enable_static_nat", dependsOn: ["vm", "public-ip"] },
-];
+const publicIpApiIds = ["public-ip", "static-nat"];
 
 /** Seeds the built-in VM deployment job definitions without replacing existing records. */
 export async function up(db: Kysely<Database>): Promise<void> {
@@ -28,14 +17,14 @@ export async function up(db: Kysely<Database>): Promise<void> {
     {
       id: withPublicIpId,
       name: "Deploy VM dengan Public IP",
-      definition: JSON.stringify({ steps: [...baseSteps, ...publicIpSteps] }),
+      definition: JSON.stringify([...baseApiIds, ...publicIpApiIds]),
       createdAt: timestamp,
       updatedAt: timestamp,
     },
     {
       id: withoutPublicIpId,
       name: "Deploy VM tanpa Public IP",
-      definition: JSON.stringify({ steps: baseSteps }),
+      definition: JSON.stringify(baseApiIds),
       createdAt: timestamp,
       updatedAt: timestamp,
     },

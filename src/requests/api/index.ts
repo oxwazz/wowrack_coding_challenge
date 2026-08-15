@@ -9,3 +9,5 @@ export * from "./enable-static-nat.js";
 export * from "./list-public-ip-addresses.js";
 export * from "./query-async-job-result.js";
 export * from "./replace-network-acl-list.js";
+export * from "./shared.js";
+export * from "./specs.js";

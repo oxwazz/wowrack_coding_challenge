@@ -237,7 +237,7 @@ test("executes every API command required for a deployment with public IP", asyn
     assert.equal(result.jobRun.jobDefinitionId, "deploy-vm-with-public-ip");
     assert(result.jobs.every((job) => job.status === "SUCCESS"));
     assert.equal(
-      (await orchestrator.store.getJobDefinition("deploy-vm-with-public-ip")).steps.length,
+      (await orchestrator.store.getJobDefinition("deploy-vm-with-public-ip")).apiIds.length,
       8,
     );
 

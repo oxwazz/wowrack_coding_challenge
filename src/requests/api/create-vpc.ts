@@ -1,7 +1,13 @@
 import type { JsonObject } from "../../types.js";
 import type { FakeCloudStackClient } from "../client.js";
-import type { ApiControlQuery } from "./shared.js";
+import type { ApiControlQuery, ApiJobSpec } from "./shared.js";
 import { runAsyncObject } from "./shared.js";
+
+export const createVpcSpec = {
+  id: "vpc",
+  handler: "create_vpc",
+  dependsOn: [],
+} as const satisfies ApiJobSpec;
 
 export type CreateVpcQuery = ApiControlQuery & Readonly<{
   cidr: string;

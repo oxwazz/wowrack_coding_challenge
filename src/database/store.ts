@@ -28,6 +28,22 @@ const rollbackFinalStatuses = new Set<JobStatus>([
   "ROLLED_BACK", "ROLLBACK_SKIPPED", "ROLLBACK_FAILED",
 ]);
 
+/** Reads the current API-ID array and tolerates the legacy shape during migration rollback. */
+function definitionApiIds(definition: unknown, jobDefinitionId: string): string[] {
+  if (Array.isArray(definition) && definition.every((id) => typeof id === "string")) {
+    return [...definition];
+  }
+  if (definition !== null && typeof definition === "object" && "steps" in definition) {
+    const steps = definition.steps;
+    if (Array.isArray(steps) && steps.every((step) => (
+      step !== null && typeof step === "object" && "id" in step && typeof step.id === "string"
+    ))) {
+      return steps.map((step) => step.id);
+    }
+  }
+  throw new Error(`Invalid job definition: ${jobDefinitionId}`);
+}
+
 /** Sums completed phase durations from matching start and finish log entries. */
 function completedPhaseDuration(
   history: JobRunLogRecord[],
@@ -99,7 +115,7 @@ export class OrchestratorStore {
     return {
       id: row.id,
       name: row.name,
-      steps: row.definition.steps,
+      apiIds: definitionApiIds(row.definition, row.id),
       createdAt: row.createdAt,
       updatedAt: row.updatedAt,
     };

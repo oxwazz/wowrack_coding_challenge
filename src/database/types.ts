@@ -3,7 +3,6 @@ import type {
   JobRunStatus,
   JobDefinition,
   JobStatus,
-  JobStepDefinition,
   JsonValue,
 } from "../types.js";
 
@@ -16,7 +15,7 @@ type JsonColumn<T = JsonValue | null> = ColumnType<
 export interface JobsTable {
   id: string;
   name: string;
-  definition: JsonColumn<{ steps: JobStepDefinition[] }>;
+  definition: JsonColumn<string[]>;
   createdAt: string;
   updatedAt: string;
 }

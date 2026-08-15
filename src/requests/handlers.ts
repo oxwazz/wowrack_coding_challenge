@@ -1,4 +1,3 @@
-import { CLOUDSTACK_HANDLER_TYPES } from "../constants.js";
 import type {
   ApiParameters,
   HandlerRegistry,
@@ -11,16 +10,28 @@ import {
   FakeCloudStackClient,
   requiredString,
 } from "./client.js";
-import { createNetworkAclList } from "./api/create-network-acl-list.js";
-import { createNetworkAcl } from "./api/create-network-acl.js";
-import { createNetwork } from "./api/create-network.js";
-import { createVpc } from "./api/create-vpc.js";
+import {
+  createNetworkAclList,
+  createNetworkAclListSpec,
+} from "./api/create-network-acl-list.js";
+import { createNetworkAcl, createNetworkAclSpec } from "./api/create-network-acl.js";
+import { createNetwork, createNetworkSpec } from "./api/create-network.js";
+import { createVpc, createVpcSpec } from "./api/create-vpc.js";
 import { deleteNetwork } from "./api/delete-network.js";
 import { deleteVpc } from "./api/delete-vpc.js";
-import { deployVirtualMachine } from "./api/deploy-virtual-machine.js";
-import { enableStaticNat } from "./api/enable-static-nat.js";
-import { listPublicIpAddresses } from "./api/list-public-ip-addresses.js";
-import { replaceNetworkAclList } from "./api/replace-network-acl-list.js";
+import {
+  deployVirtualMachine,
+  deployVirtualMachineSpec,
+} from "./api/deploy-virtual-machine.js";
+import { enableStaticNat, enableStaticNatSpec } from "./api/enable-static-nat.js";
+import {
+  listPublicIpAddresses,
+  listPublicIpAddressesSpec,
+} from "./api/list-public-ip-addresses.js";
+import {
+  replaceNetworkAclList,
+  replaceNetworkAclListSpec,
+} from "./api/replace-network-acl-list.js";
 
 /**
  * Builds the handler registry that maps deployment step types to CloudStack operations.
@@ -43,7 +54,7 @@ export function createCloudStackHandlers(
   client: FakeCloudStackClient,
 ): HandlerRegistry {
   return {
-    [CLOUDSTACK_HANDLER_TYPES.createVpc]: {
+    [createVpcSpec.handler]: {
       /** Creates a VPC and returns the object produced by the asynchronous API job. */
       async run(context) {
         const input = inputObject(context);
@@ -68,7 +79,7 @@ export function createCloudStackHandlers(
       },
     },
 
-    [CLOUDSTACK_HANDLER_TYPES.createSubnet]: {
+    [createNetworkSpec.handler]: {
       /** Creates a network inside the VPC produced by the dependency step. */
       async run(context) {
         const input = inputObject(context);
@@ -96,7 +107,7 @@ export function createCloudStackHandlers(
       },
     },
 
-    [CLOUDSTACK_HANDLER_TYPES.createAclList]: {
+    [createNetworkAclListSpec.handler]: {
       /** Creates a network ACL list for the dependency VPC. */
       async run(context) {
         const input = inputObject(context);
@@ -113,7 +124,7 @@ export function createCloudStackHandlers(
       },
     },
 
-    [CLOUDSTACK_HANDLER_TYPES.createAclRule]: {
+    [createNetworkAclSpec.handler]: {
       /** Creates an ACL rule in the list produced by the dependency step. */
       async run(context) {
         const input = inputObject(context);
@@ -135,7 +146,7 @@ export function createCloudStackHandlers(
       },
     },
 
-    [CLOUDSTACK_HANDLER_TYPES.attachAclList]: {
+    [replaceNetworkAclListSpec.handler]: {
       /** Replaces the subnet's ACL list with the list containing the configured rule. */
       async run(context) {
         const input = inputObject(context);
@@ -153,7 +164,7 @@ export function createCloudStackHandlers(
       },
     },
 
-    [CLOUDSTACK_HANDLER_TYPES.deployVm]: {
+    [deployVirtualMachineSpec.handler]: {
       /** Deploys a virtual machine on the network prepared by the ACL attachment step. */
       async run(context) {
         const input = inputObject(context);
@@ -172,7 +183,7 @@ export function createCloudStackHandlers(
       },
     },
 
-    [CLOUDSTACK_HANDLER_TYPES.listPublicIp]: {
+    [listPublicIpAddressesSpec.handler]: {
       /** Returns the first free public IP address reported by CloudStack. */
       async run(context) {
         const addresses = await listPublicIpAddresses({
@@ -191,7 +202,7 @@ export function createCloudStackHandlers(
       },
     },
 
-    [CLOUDSTACK_HANDLER_TYPES.enableStaticNat]: {
+    [enableStaticNatSpec.handler]: {
       /** Enables static NAT between the selected public IP and deployed virtual machine. */
       async run(context) {
         const input = inputObject(context);

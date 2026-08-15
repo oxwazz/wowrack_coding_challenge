@@ -1,7 +1,13 @@
 import type { JsonObject } from "../../types.js";
 import type { FakeCloudStackClient } from "../client.js";
-import type { ApiControlQuery } from "./shared.js";
+import type { ApiControlQuery, ApiJobSpec } from "./shared.js";
 import { runAsyncObject } from "./shared.js";
+
+export const createNetworkAclSpec = {
+  id: "acl-rule",
+  handler: "create_acl_rule",
+  dependsOn: ["acl-list"],
+} as const satisfies ApiJobSpec;
 
 export type CreateNetworkAclQuery = ApiControlQuery & Readonly<{
   aclid: string;

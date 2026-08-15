@@ -1,6 +1,12 @@
 import type { FakeCloudStackClient } from "../client.js";
-import type { ApiControlQuery } from "./shared.js";
+import type { ApiControlQuery, ApiJobSpec } from "./shared.js";
 import { runAsyncSuccess } from "./shared.js";
+
+export const replaceNetworkAclListSpec = {
+  id: "attach-acl",
+  handler: "attach_acl_list",
+  dependsOn: ["subnet", "acl-rule"],
+} as const satisfies ApiJobSpec;
 
 export type ReplaceNetworkAclListQuery = ApiControlQuery & Readonly<{
   aclid: string;

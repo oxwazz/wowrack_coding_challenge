@@ -1,7 +1,13 @@
 import type { JsonObject } from "../../types.js";
 import type { FakeCloudStackClient } from "../client.js";
 import { asObject, requiredArray } from "../client.js";
-import type { ApiControlQuery } from "./shared.js";
+import type { ApiControlQuery, ApiJobSpec } from "./shared.js";
+
+export const listPublicIpAddressesSpec = {
+  id: "public-ip",
+  handler: "list_public_ip",
+  dependsOn: ["vm"],
+} as const satisfies ApiJobSpec;
 
 export type ListPublicIpAddressesQuery = ApiControlQuery;
 

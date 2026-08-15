@@ -17,6 +17,7 @@ test("runs ordered Kysely schema and reference-data migrations", async () => {
     assert.deepEqual(migrations.rows.map(({ name }) => name), [
       "001_init_db",
       "002_seed",
+      "003_api_id_definitions",
     ]);
 
     const tables = (await store.database.introspection.getTables())
@@ -57,12 +58,13 @@ test("runs ordered Kysely schema and reference-data migrations", async () => {
     );
     const withPublicIp = await store.getJobDefinition("deploy-vm-with-public-ip");
     const withoutPublicIp = await store.getJobDefinition("deploy-vm-without-public-ip");
-    assert.equal(withPublicIp.steps.length, 8);
-    assert.equal(withoutPublicIp.steps.length, 6);
-    assert.deepEqual(
-      withoutPublicIp.steps.find((step) => step.id === "attach-acl")?.dependsOn,
-      ["subnet", "acl-rule"],
-    );
+    assert.deepEqual(withPublicIp.apiIds, [
+      "vpc", "subnet", "acl-list", "acl-rule", "attach-acl", "vm",
+      "public-ip", "static-nat",
+    ]);
+    assert.deepEqual(withoutPublicIp.apiIds, [
+      "vpc", "subnet", "acl-list", "acl-rule", "attach-acl", "vm",
+    ]);
     await assert.rejects(() => store.getJobDefinition("deploy-vm"));
   } finally {
     await store.close();
@@ -88,7 +90,7 @@ test("runs only pending migrations on the next startup", async () => {
       const migrations = await sql<{ count: number }>`
         SELECT COUNT(*) AS count FROM kysely_migration
       `.execute(second.database);
-      assert.equal(migrations.rows[0]?.count, 2);
+      assert.equal(migrations.rows[0]?.count, 3);
     } finally {
       await second.close();
     }
@@ -105,10 +107,13 @@ test("rolls schema and reference data back one migration at a time", async () =>
     await store.database.insertInto("jobs").values({
       id: "user-job",
       name: "User job",
-      definition: JSON.stringify({ steps: [] }),
+      definition: JSON.stringify([]),
       createdAt: timestamp,
       updatedAt: timestamp,
     }).execute();
+
+    await rollbackLastMigration(store.database);
+    assert.equal((await store.getJobDefinition("deploy-vm-with-public-ip")).apiIds.length, 8);
 
     await rollbackLastMigration(store.database);
     await assert.rejects(() => store.getJobDefinition("deploy-vm-with-public-ip"));

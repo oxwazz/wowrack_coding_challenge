@@ -27,14 +27,13 @@ export interface JobStepDefinition {
   /** Key used to resolve run/rollback functions from the handler registry. */
   handler: string;
   dependsOn: string[];
-  /** Retained for compatibility with legacy stored definitions. */
-  optional?: boolean;
 }
 
 export interface StoredJobDefinition {
   id: string;
   name: string;
-  steps: JobStepDefinition[];
+  /** API IDs selected for this template; graph metadata lives in each API file. */
+  apiIds: string[];
 }
 
 export interface JobDefinitionRecord extends StoredJobDefinition {

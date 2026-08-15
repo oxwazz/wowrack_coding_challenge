@@ -4,6 +4,13 @@ import { requiredObject } from "../client.js";
 
 export type AsyncCommand = Exclude<DocumentedCommand, "queryAsyncJobResult">;
 
+/** Declarative metadata used to build an executable job graph from API IDs. */
+export interface ApiJobSpec {
+  id: string;
+  handler: string;
+  dependsOn: readonly string[];
+}
+
 export type ApiControlQuery = ApiParameters & Readonly<{
   result?: number;
   delay?: number;
