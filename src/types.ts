@@ -4,7 +4,7 @@ import type {
   DOCUMENTED_COMMANDS,
   JOB_STATUSES,
 } from "./constants.js";
-import type { DeploymentOrchestrator } from "./core.js";
+import type { DeploymentOrchestrator } from "./core/index.js";
 
 export type JsonPrimitive = string | number | boolean | null;
 export type JsonValue = JsonPrimitive | JsonValue[] | { [key: string]: JsonValue };

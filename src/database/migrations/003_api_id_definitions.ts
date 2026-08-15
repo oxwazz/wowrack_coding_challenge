@@ -1,5 +1,5 @@
 import type { Kysely } from "kysely";
-import { buildApiJobGraph } from "../job-definition.js";
+import { buildApiJobGraph } from "../../core/api-job-graph.js";
 import type { Database } from "../types.js";
 
 interface LegacyDefinition {

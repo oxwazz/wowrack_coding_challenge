@@ -8,9 +8,9 @@ import {
 } from "../src/index.js";
 import {
   JobExecutor,
-  rollbackSuccessfulJobs,
-  Scheduler,
-} from "../src/core.js";
+} from "../src/core/job-executor.js";
+import { rollbackSuccessfulJobs } from "../src/core/rollback.js";
+import { Scheduler } from "../src/core/scheduler.js";
 import { OrchestratorStore } from "../src/database/store.js";
 
 function inputObject(input: JsonValue | null): Record<string, JsonValue> {

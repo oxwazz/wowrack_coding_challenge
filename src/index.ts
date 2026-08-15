@@ -1,7 +1,8 @@
 export {
   DeploymentOrchestrator,
-} from "./core.js";
-export { buildApiJobGraph, resolveJobCase } from "./database/job-definition.js";
+} from "./core/index.js";
+export { buildApiJobGraph } from "./core/api-job-graph.js";
+export { resolveJobCase } from "./core/job-definition.js";
 export { OrchestratorStore } from "./database/store.js";
 export { sleep } from "./utils.js";
 export {

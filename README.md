@@ -165,11 +165,16 @@ Migrasi dijalankan otomatis ketika aplikasi membuka database.
 
 ```text
 src/
-├── core.ts                   scheduler, executor, retry, dan rollback
+├── core/
+│   ├── api-job-graph.ts      membangun dan memvalidasi DAG dari API spec
+│   ├── job-definition.ts     menggabungkan DAG dan konfigurasi case
+│   ├── job-executor.ts       eksekusi, retry, timeout, dan rollback satu job
+│   ├── scheduler.ts          penjadwalan node DAG
+│   ├── rollback.ts           urutan rollback deployment
+│   └── deployment-orchestrator.ts facade utama
 ├── database/
 │   ├── __generated__/        database SQLite
 │   ├── migrations/           skema dan seed data
-│   ├── job-definition.ts     menggabungkan definition dan case
 │   └── store.ts              akses dan penyimpanan data
 ├── interfaces/cli/
 │   ├── cases/                case demo
