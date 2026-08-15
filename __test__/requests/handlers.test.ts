@@ -37,8 +37,8 @@ test("resolves separate stored DAGs with and without public IP", async () => {
       ["subnet", ["vpc"]],
       ["acl-list", ["vpc"]],
       ["acl-rule", ["acl-list"]],
-      ["attach-acl", ["subnet", "acl-rule"]],
-      ["vm", ["attach-acl"]],
+      ["attach-acl", ["subnet", "acl-list"]],
+      ["vm", ["subnet"]],
     ],
   );
 
@@ -52,7 +52,7 @@ test("resolves separate stored DAGs with and without public IP", async () => {
   assert.deepEqual(withPublicIp.at(-2), {
     id: "public-ip",
     type: "list_public_ip",
-    dependsOn: ["vm"],
+    dependsOn: [],
     input: {
       apiControl: { delay: 0, timeout: 0, result: 1 },
     },
@@ -295,15 +295,16 @@ test("turns jobstatus=2 into failure and calls documented rollback APIs", async 
     const states = Object.fromEntries(result.jobs.map((job) => [job.jobId, job.status]));
     assert.equal(result.jobRun.status, "ROLLED_BACK");
     assert.equal(states["acl-rule"], "FAILED");
-    assert.equal(states["attach-acl"], "SKIPPED");
-    assert.equal(states.vm, "SKIPPED");
+    assert.equal(states["attach-acl"], "ROLLBACK_SKIPPED");
+    assert.equal(states.vm, "ROLLBACK_SKIPPED");
     assert.equal(states.subnet, "ROLLED_BACK");
     assert.equal(states.vpc, "ROLLED_BACK");
 
     const commands = api.requests.map((url) => url.searchParams.get("command"));
     assert(commands.includes("deleteNetwork"));
     assert(commands.includes("deleteVpc"));
-    assert(!commands.includes("deployVirtualMachine"));
+    assert(commands.includes("replaceNetworkACLList"));
+    assert(commands.includes("deployVirtualMachine"));
   } finally {
     await orchestrator.close();
     await api.close();

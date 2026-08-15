@@ -151,9 +151,8 @@ export function createCloudStackHandlers(
       async run(context) {
         const input = inputObject(context);
         const subnet = dependencyObject(context, "subnet");
-        const aclRule = dependencyObject(context, "acl-rule");
-        // The rule response carries the parent ACL-list ID needed by the replace command.
-        const aclListId = requiredString(aclRule, "aclid", "acl-rule result");
+        const aclList = dependencyObject(context, "acl-list");
+        const aclListId = requiredString(aclList, "id", "acl-list result");
         const networkId = requiredString(subnet, "id", "subnet result");
         await replaceNetworkAclList({
           client,
@@ -165,14 +164,14 @@ export function createCloudStackHandlers(
     },
 
     [deployVirtualMachineSpec.handler]: {
-      /** Deploys a virtual machine on the network prepared by the ACL attachment step. */
+      /** Deploys a virtual machine directly on the subnet produced by createNetwork. */
       async run(context) {
         const input = inputObject(context);
-        const attachment = dependencyObject(context, "attach-acl");
+        const subnet = dependencyObject(context, "subnet");
         return deployVirtualMachine({
           client,
           query: {
-            networkids: requiredString(attachment, "networkId", "attach-acl result"),
+            networkids: requiredString(subnet, "id", "subnet result"),
             serviceofferingid: requiredInputString(input, "serviceOfferingId", context.jobId),
             templateid: requiredInputString(input, "templateId", context.jobId),
             name: optionalInputString(input, "name"),

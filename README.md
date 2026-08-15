@@ -74,16 +74,17 @@ flowchart TD
     VPC --> ACLList["acl-list"]
     ACLList --> ACLRule["acl-rule"]
     Subnet --> AttachACL["attach-acl"]
-    ACLRule --> AttachACL
-    AttachACL --> VM["vm"]
-    VM --> PublicIP["public-ip"]
+    ACLList --> AttachACL
+    Subnet --> VM["vm"]
     VM --> StaticNAT["static-nat"]
     PublicIP --> StaticNAT
 ```
 
-Setelah `vpc` selesai, `subnet` dan `acl-list` dapat berjalan bersamaan. `attach-acl` menunggu kedua cabang tersebut selesai.
+`public-ip` tidak memiliki dependency sehingga dapat langsung berjalan. Setelah `vpc` selesai,
+`subnet` dan `acl-list` dapat berjalan bersamaan. `attach-acl` menunggu `subnet` dan
+`acl-list`, tanpa menunggu `acl-rule`.
 
-Deployment tanpa public IP berhenti setelah `vm`.
+Deployment tanpa public IP tidak menjalankan node `public-ip` dan `static-nat`.
 
 ## Case demo
 

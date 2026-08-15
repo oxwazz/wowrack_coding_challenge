@@ -5,7 +5,7 @@ import { runAsyncSuccess } from "./shared.js";
 export const replaceNetworkAclListSpec = {
   id: "attach-acl",
   handler: "attach_acl_list",
-  dependsOn: ["subnet", "acl-rule"],
+  dependsOn: ["subnet", "acl-list"],
 } as const satisfies ApiJobSpec;
 
 export type ReplaceNetworkAclListQuery = ApiControlQuery & Readonly<{

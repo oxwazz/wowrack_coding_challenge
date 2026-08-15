@@ -6,7 +6,7 @@ import { runAsyncObject } from "./shared.js";
 export const deployVirtualMachineSpec = {
   id: "vm",
   handler: "deploy_vm",
-  dependsOn: ["attach-acl"],
+  dependsOn: ["subnet"],
 } as const satisfies ApiJobSpec;
 
 export type DeployVirtualMachineQuery = ApiControlQuery & Readonly<{

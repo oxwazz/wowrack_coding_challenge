@@ -6,7 +6,7 @@ import type { ApiControlQuery, ApiJobSpec } from "./shared.js";
 export const listPublicIpAddressesSpec = {
   id: "public-ip",
   handler: "list_public_ip",
-  dependsOn: ["vm"],
+  dependsOn: [],
 } as const satisfies ApiJobSpec;
 
 export type ListPublicIpAddressesQuery = ApiControlQuery;

@@ -46,10 +46,10 @@ test("buildApiJobGraph orders selected APIs from their declared dependencies", (
     [
       { id: "vpc", dependsOn: [] },
       { id: "subnet", dependsOn: ["vpc"] },
+      { id: "vm", dependsOn: ["subnet"] },
       { id: "acl-list", dependsOn: ["vpc"] },
+      { id: "attach-acl", dependsOn: ["subnet", "acl-list"] },
       { id: "acl-rule", dependsOn: ["acl-list"] },
-      { id: "attach-acl", dependsOn: ["subnet", "acl-rule"] },
-      { id: "vm", dependsOn: ["attach-acl"] },
     ],
   );
 });
