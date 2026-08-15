@@ -424,10 +424,14 @@ function Runner({
 }) {
   const [jobRunId, setJobRunId] = useState("");
   const [jobs, setJobs] = useState<JobStepRunRecord[]>([]);
+  const [elapsedMilliseconds, setElapsedMilliseconds] = useState(0);
   useEffect(() => {
     let mounted = true;
-    let timer: ReturnType<typeof setInterval> | undefined;
+    let refreshTimer: ReturnType<typeof setInterval> | undefined;
     const startedAt = performance.now();
+    const elapsedTimer = setInterval(() => {
+      if (mounted) setElapsedMilliseconds(performance.now() - startedAt);
+    }, 100);
     // Keep the orchestration promise independent from React's synchronous effect callback.
     void (async () => {
       try {
@@ -441,7 +445,7 @@ function Runner({
         };
         await refresh();
         // SQLite is the source of truth, so the UI polls persisted state during execution.
-        timer = setInterval(() => void refresh().catch(onError), 200);
+        refreshTimer = setInterval(() => void refresh().catch(onError), 200);
         const result = await orchestrator.runJobRun(id);
         if (!mounted) return;
         await refresh();
@@ -449,13 +453,15 @@ function Runner({
       } catch (error) {
         if (mounted) onError(error);
       } finally {
-        if (timer !== undefined) clearInterval(timer);
+        if (refreshTimer !== undefined) clearInterval(refreshTimer);
+        clearInterval(elapsedTimer);
       }
     })();
     return () => {
       // Prevent state updates after navigation unmounts the runner.
       mounted = false;
-      if (timer !== undefined) clearInterval(timer);
+      if (refreshTimer !== undefined) clearInterval(refreshTimer);
+      clearInterval(elapsedTimer);
     };
   }, [deploymentCase, onComplete, onError, orchestrator]);
 
@@ -463,6 +469,7 @@ function Runner({
     <Panel title="Job run berjalan">
       <Text><Spinner /> Menjalankan job</Text>
       {jobRunId !== "" && <Text dimColor>ID: {jobRunId}</Text>}
+      <SummaryRow label="Total waktu" value={formatElapsedSeconds(elapsedMilliseconds)} />
       <JobTable jobs={jobs} />
       <Help>Status dibaca langsung dari SQLite setiap 200 ms.</Help>
     </Panel>
