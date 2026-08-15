@@ -1,6 +1,7 @@
 import type { Kysely } from "kysely";
 import type { Database } from "../types.js";
 
+/** Creates the tables and lookup index required by the orchestrator. */
 export async function up(db: Kysely<Database>): Promise<void> {
   await db.schema.createTable("jobs").ifNotExists()
     .addColumn("id", "text", (column) => column.primaryKey())
@@ -34,6 +35,7 @@ export async function up(db: Kysely<Database>): Promise<void> {
     .on("jobRunLogs").columns(["jobRunId", "jobId", "id"]).execute();
 }
 
+/** Removes all schema objects created by this migration in dependency-safe order. */
 export async function down(db: Kysely<Database>): Promise<void> {
   await db.schema.dropTable("jobRunLogs").ifExists().execute();
   await db.schema.dropTable("jobRuns").ifExists().execute();

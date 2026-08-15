@@ -5,6 +5,18 @@ export const CLI_DEFAULTS = {
   maxRetries: 1,
 } as const;
 
+/**
+ * Returns the CloudStack endpoint configured through `CLOUDSTACK_API_URL`.
+ *
+ * @returns The non-empty URL stored in the environment variable.
+ * @throws When `CLOUDSTACK_API_URL` is missing or contains only whitespace.
+ *
+ * @example
+ * ```ts
+ * process.env.CLOUDSTACK_API_URL = "http://localhost:8080/client/api";
+ * const endpoint = cloudStackApiUrl();
+ * ```
+ */
 export function cloudStackApiUrl(): string {
   const apiUrl = process.env.CLOUDSTACK_API_URL;
   if (apiUrl === undefined || apiUrl.trim() === "") {

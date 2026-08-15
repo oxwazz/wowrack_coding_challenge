@@ -40,6 +40,18 @@ type Screen =
   | "done"
   | "error";
 
+/**
+ * Reads and parses one deployment-case JSON file.
+ *
+ * @param filename - Absolute or relative path to the JSON file.
+ * @returns The parsed deployment-case configuration.
+ * @throws A contextual error when the file contains invalid JSON.
+ *
+ * @example
+ * ```ts
+ * const deploymentCase = await loadCloudDeploymentCase("cases/01.basic.json");
+ * ```
+ */
 export async function loadCloudDeploymentCase(
   filename: string,
 ): Promise<CloudDeploymentCase> {
@@ -53,6 +65,17 @@ export async function loadCloudDeploymentCase(
   }
 }
 
+/**
+ * Discovers JSON deployment cases and sorts them by numeric filename prefix.
+ *
+ * @param directory - Directory containing deployment-case JSON files.
+ * @returns Menu metadata for each valid case file.
+ *
+ * @example
+ * ```ts
+ * const cases = await listCloudDeploymentCases("src/interfaces/cli/cases");
+ * ```
+ */
 export async function listCloudDeploymentCases(
   directory: string,
 ): Promise<CloudDeploymentCaseSummary[]> {
@@ -69,10 +92,12 @@ export async function listCloudDeploymentCases(
       description: caseDescription(id, deploymentCase),
     };
   }));
+  // Numeric prefixes define menu order; filenames make ties deterministic.
   return cases.sort((left, right) =>
     left.index - right.index || left.filename.localeCompare(right.filename));
 }
 
+/** Renders the interactive CLI and resolves with the exit code chosen by the user. */
 export async function runInteractiveCli(options: InteractiveCliOptions): Promise<number> {
   const cases = await listCloudDeploymentCases(options.casesDirectory);
   const instance = render(
@@ -83,6 +108,7 @@ export async function runInteractiveCli(options: InteractiveCliOptions): Promise
   return isInteractiveExitResult(result) ? result.exitCode : 0;
 }
 
+/** Configures dependencies, launches the interactive CLI, and closes the database on exit. */
 export async function main(): Promise<void> {
   if (process.argv.length > 2) {
     throw new Error("CLI hanya mendukung mode interaktif. Jalankan: npm run cli");
@@ -115,6 +141,7 @@ export async function main(): Promise<void> {
   }
 }
 
+/** Coordinates the CLI screen state and routes user actions between workflow views. */
 function App({
   orchestrator,
   casesDirectory,
@@ -138,12 +165,14 @@ function App({
     }
   });
 
+  /** Displays an error screen and records a failing process exit code. */
   const showFailure = useCallback((error: unknown) => {
     setFailure(errorMessage(error));
     setLastExitCode(1);
     setScreen("error");
   }, []);
 
+  /** Displays a completed run and derives the process exit code from its final status. */
   const showCompletion = useCallback((value: JobRunResult, elapsedMs: number) => {
     setResult(value);
     setElapsedMilliseconds(elapsedMs);
@@ -151,6 +180,7 @@ function App({
     setScreen("done");
   }, []);
 
+  /** Clears prior workflow state and opens the deployment-case picker. */
   const startNewFlow = useCallback(() => {
     setDeploymentCase(undefined);
     setCaseSummary(undefined);
@@ -161,6 +191,7 @@ function App({
     setScreen("case");
   }, []);
 
+  /** Loads the selected deployment case and advances to its confirmation screen. */
   const selectCase = useCallback(async (selected: CloudDeploymentCaseSummary) => {
     try {
       const selectedCase = await loadCloudDeploymentCase(
@@ -174,6 +205,7 @@ function App({
     }
   }, [casesDirectory, showFailure]);
 
+  /** Starts execution when a deployment case has been loaded successfully. */
   const start = useCallback(() => {
     if (deploymentCase !== undefined) setScreen("running");
   }, [deploymentCase]);
@@ -251,6 +283,7 @@ function App({
   );
 }
 
+/** Renders the persistent CLI title and implementation summary. */
 function Header() {
   return (
     <Box flexDirection="column" borderStyle="round" borderColor="cyan" paddingX={1}>
@@ -260,6 +293,7 @@ function Header() {
   );
 }
 
+/** Renders and handles keyboard navigation for the top-level CLI menu. */
 function MainMenu({
   onNew,
   onInterrupted,
@@ -294,6 +328,7 @@ function MainMenu({
   );
 }
 
+/** Renders and handles keyboard navigation for available deployment cases. */
 function CasePicker({
   cases,
   onSelect,
@@ -327,6 +362,7 @@ function CasePicker({
   );
 }
 
+/** Shows the selected case configuration and requests deployment confirmation. */
 function Confirm({
   caseSummary,
   deploymentCase,
@@ -374,6 +410,7 @@ function Confirm({
   );
 }
 
+/** Creates, executes, and periodically refreshes the live state of a new job run. */
 function Runner({
   orchestrator,
   deploymentCase,
@@ -391,16 +428,19 @@ function Runner({
     let mounted = true;
     let timer: ReturnType<typeof setInterval> | undefined;
     const startedAt = performance.now();
+    // Keep the orchestration promise independent from React's synchronous effect callback.
     void (async () => {
       try {
         const id = await orchestrator.createJobRunFromCase(deploymentCase);
         if (!mounted) return;
         setJobRunId(id);
+        /** Refreshes the displayed step state from persistent storage. */
         const refresh = async () => {
           const current = await orchestrator.store.getJobStepRuns(id);
           if (mounted) setJobs(current);
         };
         await refresh();
+        // SQLite is the source of truth, so the UI polls persisted state during execution.
         timer = setInterval(() => void refresh().catch(onError), 200);
         const result = await orchestrator.runJobRun(id);
         if (!mounted) return;
@@ -413,6 +453,7 @@ function Runner({
       }
     })();
     return () => {
+      // Prevent state updates after navigation unmounts the runner.
       mounted = false;
       if (timer !== undefined) clearInterval(timer);
     };
@@ -433,6 +474,7 @@ interface InterruptedView {
   jobs: JobStepRunRecord[];
 }
 
+/** Lists interrupted runs and allows the user to resume the selected workflow. */
 function InterruptedJobRuns({
   orchestrator,
   onBack,
@@ -449,12 +491,14 @@ function InterruptedJobRuns({
   const [selected, setSelected] = useState(0);
   const [resuming, setResuming] = useState(false);
 
+  /** Resumes the selected run while refreshing its displayed persisted state. */
   const resumeSelected = useCallback(() => {
     const selectedView = views[selected];
     if (selectedView === undefined || resuming) return;
     setResuming(true);
     const startedAt = performance.now();
     let timer: ReturnType<typeof setInterval> | undefined;
+    /** Reloads the selected run and merges its current state into the visible list. */
     const refresh = async () => {
       const [jobRun, jobs] = await Promise.all([
         orchestrator.store.getJobRun(selectedView.jobRun.id),
@@ -465,6 +509,7 @@ function InterruptedJobRuns({
     };
     void (async () => {
       try {
+        // Refresh in parallel with resume so rollback and retry progress stays visible.
         timer = setInterval(() => void refresh().catch(onError), 200);
         const result = await orchestrator.resumeJobRun(selectedView.jobRun.id);
         await refresh();
@@ -534,6 +579,7 @@ function InterruptedJobRuns({
   );
 }
 
+/** Requests confirmation and clears persisted run history from the database. */
 function ResetDatabase({
   orchestrator,
   onBack,
@@ -547,6 +593,7 @@ function ResetDatabase({
   const [resetting, setResetting] = useState(false);
   const [completed, setCompleted] = useState(false);
 
+  /** Starts the database reset once and updates the view when it finishes. */
   const reset = useCallback(() => {
     if (resetting) return;
     setResetting(true);
@@ -592,6 +639,7 @@ function ResetDatabase({
   );
 }
 
+/** Displays a completed job run, its timing, and navigation choices. */
 function ResultView({
   result,
   elapsedMilliseconds,
@@ -623,6 +671,7 @@ function ResultView({
   );
 }
 
+/** Displays a workflow error and offers menu or exit actions. */
 function ExitMessage({
   message,
   onMenu,
@@ -645,6 +694,7 @@ function ExitMessage({
   );
 }
 
+/** Renders current job-step states, attempts, errors, and timing details. */
 function JobTable({
   jobs,
   freezeRunningElapsed = false,
@@ -682,6 +732,7 @@ function JobTable({
   );
 }
 
+/** Renders a lightweight animated activity indicator. */
 function Spinner() {
   const frames = ["◐", "◓", "◑", "◒"];
   const [frame, setFrame] = useState(0);
@@ -692,6 +743,7 @@ function Spinner() {
   return <Text color="cyan">{frames[frame % frames.length]}</Text>;
 }
 
+/** Provides consistent spacing and title presentation for a CLI screen. */
 function Panel({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <Box flexDirection="column" marginTop={1} paddingX={1}>
@@ -701,6 +753,7 @@ function Panel({ title, children }: { title: string; children: React.ReactNode }
   );
 }
 
+/** Renders one selectable menu row with optional supporting detail. */
 function MenuRow({
   selected,
   label,
@@ -719,6 +772,7 @@ function MenuRow({
   );
 }
 
+/** Renders a label and value pair using the summary layout. */
 function SummaryRow({ label, value }: { label: string; value: string }) {
   return (
     <Box>
@@ -728,6 +782,7 @@ function SummaryRow({ label, value }: { label: string; value: string }) {
   );
 }
 
+/** Reads a string from the VM input section for display in the confirmation summary. */
 function caseInputString(deploymentCase: CloudDeploymentCase, key: string): string {
   const input = deploymentCase.steps.vm?.input;
   if (input === null || typeof input !== "object" || Array.isArray(input)) return "-";
@@ -735,10 +790,22 @@ function caseInputString(deploymentCase: CloudDeploymentCase, key: string): stri
   return typeof value === "string" ? value : "-";
 }
 
+/** Renders contextual keyboard instructions beneath a CLI view. */
 function Help({ children }: { children: React.ReactNode }) {
   return <Box marginTop={1}><Text dimColor>{children}</Text></Box>;
 }
 
+/**
+ * Maps a job status to the symbol and color used by the terminal UI.
+ *
+ * @param status - Persisted status of a job step.
+ * @returns Ink-compatible symbol and color values.
+ *
+ * @example
+ * ```ts
+ * jobStatusAppearance("SUCCESS"); // { symbol: "✓", color: "green" }
+ * ```
+ */
 export function jobStatusAppearance(status: JobStatus): { symbol: string; color: string } {
   if (status === "SUCCESS") return { symbol: "✓", color: "green" };
   if (status === "FAILED" || status === "ROLLBACK_FAILED") return { symbol: "✗", color: "red" };
@@ -749,10 +816,29 @@ export function jobStatusAppearance(status: JobStatus): { symbol: string; color:
   return { symbol: "●", color: "cyan" };
 }
 
+/**
+ * Formats a millisecond duration as seconds with two decimal places.
+ *
+ * @param elapsedMilliseconds - Duration to format.
+ * @returns A localized CLI label such as `1.25 detik`.
+ *
+ * @example
+ * ```ts
+ * formatElapsedSeconds(1_250); // "1.25 detik"
+ * ```
+ */
 export function formatElapsedSeconds(elapsedMilliseconds: number): string {
   return `${(Math.round(elapsedMilliseconds / 10) / 100).toFixed(2)} detik`;
 }
 
+/**
+ * Calculates and formats elapsed execution time from persisted timestamps.
+ * Running jobs use the supplied reference time; completed jobs use `finishedAt`.
+ *
+ * @param job - Job timestamps required for the calculation.
+ * @param currentTimeMilliseconds - Reference clock used for an unfinished job.
+ * @returns A formatted duration, or `-` when timing data is unavailable.
+ */
 export function formatJobElapsed(
   job: Pick<JobStepRunRecord, "startedAt" | "finishedAt">,
   currentTimeMilliseconds: number = Date.now(),
@@ -766,6 +852,19 @@ export function formatJobElapsed(
   return formatElapsedSeconds(Math.max(0, finishedAt - startedAt));
 }
 
+/**
+ * Formats execution and rollback durations for a reconstructed job-step state.
+ *
+ * @param job - Persisted status and accumulated timing fields.
+ * @param currentTimeMilliseconds - Reference clock for an active phase.
+ * @returns A combined execution and rollback timing label.
+ *
+ * @example
+ * ```ts
+ * const label = formatJobTiming(job, Date.now());
+ * // "eksekusi 1.25 detik · rollback 0.50 detik"
+ * ```
+ */
 export function formatJobTiming(
   job: Pick<JobStepRunRecord,
     | "attempt"
@@ -781,6 +880,7 @@ export function formatJobTiming(
 
   let executionDuration = job.executionDurationMs;
   if (job.status === "RUNNING" && job.startedAt !== null) {
+    // Persisted duration covers finished attempts; add only the currently active attempt.
     executionDuration += elapsedSince(job.startedAt, currentTimeMilliseconds);
   }
   let timing = `eksekusi ${formatElapsedSeconds(executionDuration)}`;
@@ -790,42 +890,51 @@ export function formatJobTiming(
 
   let rollbackDuration = job.rollbackDurationMs;
   if (job.status === "ROLLING_BACK") {
+    // The active rollback phase has no finishing log yet, so calculate its live duration.
     rollbackDuration += elapsedSince(job.rollbackStartedAt, currentTimeMilliseconds);
   }
   timing += ` · rollback ${formatElapsedSeconds(rollbackDuration)}`;
   return timing;
 }
 
+/** Calculates a non-negative duration between an ISO timestamp and a reference time. */
 function elapsedSince(timestamp: string, currentTimeMilliseconds: number): number {
   const startedAt = Date.parse(timestamp);
   if (!Number.isFinite(startedAt) || !Number.isFinite(currentTimeMilliseconds)) return 0;
   return Math.max(0, currentTimeMilliseconds - startedAt);
 }
 
+/** Wraps a selection index within a list and safely handles an empty list. */
 function wrapIndex(index: number, length: number): number {
   return length === 0 ? 0 : (index + length) % length;
 }
 
+/** Derives a stable case identifier from its numbered JSON filename. */
 function caseIdFromFilename(filename: string): string {
   return basename(filename, ".json").replace(/^\d+[._-]/, "");
 }
 
+/** Extracts the numeric ordering prefix from a deployment-case filename. */
 function caseIndex(filename: string): number {
   const match = /^(\d+)[._-]/.exec(filename);
+  // Unnumbered cases are still available but appear after explicitly ordered files.
   return match === null ? Number.MAX_SAFE_INTEGER : Number(match[1]);
 }
 
+/** Returns an explicit case description or falls back to its derived identifier. */
 function caseDescription(id: string, deploymentCase: CloudDeploymentCase): string {
   return typeof deploymentCase.description === "string" && deploymentCase.description.trim() !== ""
     ? deploymentCase.description
     : id;
 }
 
+/** Narrows an Ink exit result to the CLI's expected exit-code payload. */
 function isInteractiveExitResult(value: unknown): value is InteractiveExitResult {
   if (value === null || typeof value !== "object") return false;
   return typeof (value as { exitCode?: unknown }).exitCode === "number";
 }
 
+/** Determines whether this module is the process entry point rather than an import. */
 function isMainModule(): boolean {
   if (process.argv[1] === undefined) return false;
   try {

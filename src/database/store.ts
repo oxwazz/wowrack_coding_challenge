@@ -14,9 +14,12 @@ import type {
   JsonValue,
 } from "../types.js";
 
+/** Returns the current time as an ISO-8601 timestamp for persisted records. */
 const now = (): string => new Date().toISOString();
+/** Serializes a JSON value for a nullable SQLite text column. */
 const json = (value: JsonValue | null): string | null =>
   value === null ? null : JSON.stringify(value);
+// Terminal status groups determine timestamps and completed phase durations.
 const finalStatuses = new Set<JobStatus>([
   "SUCCESS", "FAILED", "ROLLED_BACK", "ROLLBACK_SKIPPED", "ROLLBACK_FAILED", "SKIPPED",
 ]);
@@ -25,6 +28,7 @@ const rollbackFinalStatuses = new Set<JobStatus>([
   "ROLLED_BACK", "ROLLBACK_SKIPPED", "ROLLBACK_FAILED",
 ]);
 
+/** Sums completed phase durations from matching start and finish log entries. */
 function completedPhaseDuration(
   history: JobRunLogRecord[],
   startingStatus: JobStatus,
@@ -34,6 +38,7 @@ function completedPhaseDuration(
   let duration = 0;
   for (const log of history) {
     if (log.status === startingStatus) {
+      // A later start replaces an incomplete earlier phase after an interrupted attempt.
       startedAt = Date.parse(log.createdAt);
     } else if (startedAt !== null && finishingStatuses.has(log.status)) {
       const finishedAt = Date.parse(log.createdAt);
@@ -46,6 +51,7 @@ function completedPhaseDuration(
   return duration;
 }
 
+/** Converts a selected database row into the public job-run record shape. */
 function toJobRun(row: Selectable<Database["jobRuns"]>): JobRunRecord {
   return {
     id: row.id,
@@ -59,16 +65,32 @@ export class OrchestratorStore {
   readonly database: Kysely<Database>;
   readonly ready: Promise<void>;
 
+  /**
+   * Opens the SQLite store and starts applying pending migrations.
+   * Await `ready` before using the raw `database` property directly.
+   *
+   * @param filename - SQLite filename, or `:memory:` for an isolated in-memory store.
+   *
+   * @example
+   * ```ts
+   * const store = new OrchestratorStore(":memory:");
+   * await store.ready;
+   * // Use the store...
+   * await store.close();
+   * ```
+   */
   constructor(filename: string) {
     this.database = createDatabase(filename);
     this.ready = migrateToLatest(this.database);
   }
 
+  /** Waits for initialization and closes the underlying database connection. */
   async close(): Promise<void> {
     await this.ready;
     await this.database.destroy();
   }
 
+  /** Loads a reusable job definition by identifier. */
   async getJobDefinition(jobDefinitionId: string): Promise<JobDefinitionRecord> {
     await this.ready;
     const row = await this.database.selectFrom("jobs").selectAll()
@@ -83,6 +105,13 @@ export class OrchestratorStore {
     };
   }
 
+  /**
+   * Persists a new job run and an initial `PENDING` log for every step atomically.
+   *
+   * @param jobRunId - Unique identifier for the run.
+   * @param jobs - DAG definition snapshotted with the run.
+   * @param jobDefinitionId - Optional reusable template that produced the run.
+   */
   async createJobRun(
     jobRunId: string,
     jobs: JobDefinition[],
@@ -90,7 +119,9 @@ export class OrchestratorStore {
   ): Promise<void> {
     await this.ready;
     const timestamp = now();
+    // The snapshot makes an existing run independent from future template changes.
     const snapshot = jobs.map((job) => ({ ...job, maxRetries: job.maxRetries ?? 0 }));
+    // The run and its initial step logs must either both exist or both be rolled back.
     await this.database.transaction().execute(async (transaction) => {
       await transaction.insertInto("jobRuns").values({
         id: jobRunId,
@@ -112,6 +143,7 @@ export class OrchestratorStore {
     });
   }
 
+  /** Loads one persisted job-run record by identifier. */
   async getJobRun(jobRunId: string): Promise<JobRunRecord> {
     await this.ready;
     const row = await this.database.selectFrom("jobRuns").selectAll()
@@ -120,6 +152,7 @@ export class OrchestratorStore {
     return toJobRun(row);
   }
 
+  /** Lists runs left in an executable or rollback state after an interruption. */
   async listInterruptedJobRuns(): Promise<JobRunRecord[]> {
     await this.ready;
     const rows = await this.database.selectFrom("jobRuns").selectAll()
@@ -128,11 +161,13 @@ export class OrchestratorStore {
     return rows.map(toJobRun);
   }
 
+  /** Deletes all run history while leaving schema and job definitions intact. */
   async resetJobRuns(): Promise<void> {
     await this.ready;
     await this.database.deleteFrom("jobRuns").execute();
   }
 
+  /** Updates the aggregate status of a persisted job run. */
   async setJobRunStatus(
     jobRunId: string,
     status: JobRunStatus,
@@ -142,6 +177,7 @@ export class OrchestratorStore {
       .where("id", "=", jobRunId).execute();
   }
 
+  /** Returns the immutable job-definition snapshot stored with a run. */
   async getJobDefinitions(jobRunId: string): Promise<JobDefinition[]> {
     await this.ready;
     const row = await this.database.selectFrom("jobRuns").select("jobsSnapshot")
@@ -150,6 +186,12 @@ export class OrchestratorStore {
     return row.jobsSnapshot;
   }
 
+  /**
+   * Reconstructs the current state and timing of every step from its append-only logs.
+   *
+   * @param jobRunId - Identifier of the run to reconstruct.
+   * @returns Step records in the original definition order.
+   */
   async getJobStepRuns(jobRunId: string): Promise<JobStepRunRecord[]> {
     const [jobRun, jobs, logs] = await Promise.all([
       this.getJobRun(jobRunId),
@@ -157,6 +199,7 @@ export class OrchestratorStore {
       this.getJobRunLogs(jobRunId),
     ]);
     const histories = new Map<string, JobRunLogRecord[]>();
+    // Group ordered logs once so each job can be reconstructed independently below.
     for (const log of logs) {
       const history = histories.get(log.jobId) ?? [];
       history.push(log);
@@ -167,6 +210,7 @@ export class OrchestratorStore {
       const history = histories.get(job.id) ?? [];
       const latest = history.at(-1);
       if (latest === undefined) throw new Error(`Job log not found: ${jobRunId}/${job.id}`);
+      // The latest phase starts are used for live elapsed-time display after a restart.
       const started = history.findLast((log) => log.status === "RUNNING");
       const rollbackStarted = history.findLast((log) => log.status === "ROLLING_BACK");
       return {
@@ -200,12 +244,14 @@ export class OrchestratorStore {
     return runs;
   }
 
+  /** Returns the reconstructed state of a single step within a job run. */
   async getJobStepRun(jobRunId: string, jobId: string): Promise<JobStepRunRecord> {
     const job = (await this.getJobStepRuns(jobRunId)).find((candidate) => candidate.jobId === jobId);
     if (job === undefined) throw new Error(`Job not found: ${jobRunId}/${jobId}`);
     return job;
   }
 
+  /** Collects the latest results of the direct dependencies required by a job step. */
   async getDependencyResults(
     jobRunId: string,
     jobId: string,
@@ -217,18 +263,37 @@ export class OrchestratorStore {
     const dependencies = definitions.find((job) => job.id === jobId)?.dependsOn;
     if (dependencies === undefined) throw new Error(`Job not found: ${jobRunId}/${jobId}`);
     const runsById = new Map(runs.map((run) => [run.jobId, run]));
+    // Missing results remain null so handlers receive every declared dependency key.
     return Object.fromEntries(dependencies.map((dependencyId) => [
       dependencyId,
       runsById.get(dependencyId)?.result ?? null,
     ]));
   }
 
+  /**
+   * Appends a state transition without mutating prior history.
+   * Omitted result and error fields inherit their current values when appropriate.
+   *
+   * @param jobRunId - Identifier of the containing run.
+   * @param jobId - Identifier of the step being transitioned.
+   * @param transition - New status and optional attempt, result, or error values.
+   * @returns The step state reconstructed after appending the transition.
+   *
+   * @example
+   * ```ts
+   * const job = await store.transitionJob("run-1", "vpc", {
+   *   status: "SUCCESS",
+   *   result: { id: "vpc-1" },
+   * });
+   * ```
+   */
   async transitionJob(
     jobRunId: string,
     jobId: string,
     transition: JobTransition,
   ): Promise<JobStepRunRecord> {
     const current = await this.getJobStepRun(jobRunId, jobId);
+    /** Checks whether the transition explicitly supplies an optional field. */
     const has = (key: keyof JobTransition): boolean =>
       Object.prototype.hasOwnProperty.call(transition, key);
     await this.database.insertInto("jobRunLogs").values({
@@ -236,6 +301,7 @@ export class OrchestratorStore {
       jobId,
       status: transition.status,
       attempt: transition.attempt ?? current.attempt,
+      // Omitted fields inherit persisted values; explicitly supplied null clears them.
       result: json(has("result") ? transition.result ?? null : current.result),
       error: has("error")
         ? transition.error ?? null
@@ -245,6 +311,7 @@ export class OrchestratorStore {
     return this.getJobStepRun(jobRunId, jobId);
   }
 
+  /** Returns ordered transition logs for a run, optionally filtered to one step. */
   async getJobRunLogs(jobRunId: string, jobId?: string): Promise<JobRunLogRecord[]> {
     await this.ready;
     let query = this.database.selectFrom("jobRunLogs").selectAll()

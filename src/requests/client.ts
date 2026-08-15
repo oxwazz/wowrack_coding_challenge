@@ -15,6 +15,7 @@ export class FakeCloudStackApiError extends Error {
   readonly responseBody: JsonValue;
   readonly asyncJobFailed: boolean;
 
+  /** Creates a structured error containing the failed command and CloudStack response details. */
   constructor(
     command: DocumentedCommand,
     message: string,
@@ -36,10 +37,36 @@ export class FakeCloudStackApiError extends Error {
 export class FakeCloudStackClient {
   readonly baseUrl: string;
 
+  /**
+   * Creates a client that sends requests to the configured fake CloudStack endpoint.
+   *
+   * @param options - Client configuration containing the API base URL.
+   *
+   * @example
+   * ```ts
+   * const client = new FakeCloudStackClient({
+   *   baseUrl: "http://localhost:8080/client/api",
+   * });
+   * ```
+   */
   constructor(options: FakeCloudStackClientOptions) {
     this.baseUrl = options.baseUrl;
   }
 
+  /**
+   * Sends a CloudStack command and returns its validated response envelope.
+   *
+   * @param command - Supported CloudStack command name.
+   * @param parameters - Query parameters sent with the command.
+   * @param signal - Optional cancellation signal for the HTTP request.
+   * @returns The object inside the command-specific response envelope.
+   * @throws `FakeCloudStackApiError` for transport, HTTP, JSON, or API errors.
+   *
+   * @example
+   * ```ts
+   * const response = await client.request("listPublicIpAddresses", { state: "Free" });
+   * ```
+   */
   async request(
     command: DocumentedCommand,
     parameters: ApiParameters = {},
@@ -47,6 +74,7 @@ export class FakeCloudStackClient {
   ): Promise<JsonObject> {
     const url = new URL(this.baseUrl);
     url.searchParams.set("command", command);
+    // Undefined values are omitted so CloudStack can apply its own parameter defaults.
     for (const [name, value] of Object.entries(parameters)) {
       if (value !== undefined) {
         url.searchParams.set(name, String(value));
@@ -74,6 +102,7 @@ export class FakeCloudStackClient {
     const text = await response.text();
     let body: JsonValue;
     try {
+      // Read text first so an invalid JSON response can be included in the thrown error.
       body = JSON.parse(text) as JsonValue;
     } catch {
       throw new FakeCloudStackApiError(
@@ -84,6 +113,7 @@ export class FakeCloudStackClient {
     }
 
     if (!response.ok) {
+      // Error payloads may be wrapped differently depending on the HTTP failure path.
       const apiError = readApiErrorBody(body);
       throw new FakeCloudStackApiError(
         command,
@@ -95,6 +125,7 @@ export class FakeCloudStackClient {
     }
 
     const envelope = responseEnvelope(body, command);
+    // Some fake API failures use HTTP 200 and place error fields inside the envelope.
     const apiError = readApiError(envelope);
     if (apiError !== null) {
       throw new FakeCloudStackApiError(
@@ -108,6 +139,14 @@ export class FakeCloudStackClient {
     return envelope;
   }
 
+  /**
+   * Starts an asynchronous CloudStack command and returns its job identifier.
+   *
+   * @param command - Any supported command except `queryAsyncJobResult`.
+   * @param parameters - Query parameters required by the command.
+   * @param signal - Optional cancellation signal.
+   * @returns The non-empty asynchronous job ID from the API response.
+   */
   async startAsyncJob(
     command: Exclude<DocumentedCommand, "queryAsyncJobResult">,
     parameters: ApiParameters,
@@ -117,6 +156,13 @@ export class FakeCloudStackClient {
     return requiredString(response, "jobid", `${command} response`);
   }
 
+  /**
+   * Queries and validates the current status and result of an asynchronous job.
+   *
+   * @param jobId - ID returned by `startAsyncJob`.
+   * @param signal - Optional cancellation signal.
+   * @returns The normalized status (`0`, `1`, or `2`) and result object.
+   */
   async queryAsyncJob(jobId: string, signal?: AbortSignal): Promise<AsyncJobResponse> {
     const response = await this.request("queryAsyncJobResult", { jobid: jobId, sleep: 0, timeout: 0 }, signal);
     const rawStatus = requiredNumber(response, "jobstatus", "queryAsyncJobResult response");
@@ -134,12 +180,27 @@ export class FakeCloudStackClient {
     return { jobId, jobStatus: rawStatus, jobResult };
   }
 
+  /**
+   * Polls an asynchronous job until it succeeds or reports a structured failure.
+   *
+   * @param jobId - ID returned by `startAsyncJob`.
+   * @param signal - Optional cancellation signal used for each polling request.
+   * @returns The asynchronous job's successful result object.
+   * @throws `FakeCloudStackApiError` when CloudStack reports status `2`.
+   *
+   * @example
+   * ```ts
+   * const jobId = await client.startAsyncJob("createVpc", { cidr: "10.0.0.0/16" });
+   * const result = await client.waitForAsyncJob(jobId);
+   * ```
+   */
   async waitForAsyncJob(
     jobId: string,
     signal?: AbortSignal,
   ): Promise<JsonObject> {
     while (true) {
       const job = await this.queryAsyncJob(jobId, signal);
+      // CloudStack uses 0 for pending, 1 for success, and 2 for failure.
       if (job.jobStatus === 1) {
         return job.jobResult;
       }
@@ -160,8 +221,10 @@ export class FakeCloudStackClient {
   }
 }
 
+/** Extracts the command-specific response envelope from a CloudStack response body. */
 function responseEnvelope(body: JsonValue, command: DocumentedCommand): JsonObject {
   const root = asObject(body, `${command} response`);
+  // CloudStack envelope keys are the lowercase command name followed by "response".
   const key = `${command.toLowerCase()}response`;
   const value = root[key];
   if (value === undefined) {
@@ -170,6 +233,14 @@ function responseEnvelope(body: JsonValue, command: DocumentedCommand): JsonObje
   return asObject(value, `${command} response envelope`);
 }
 
+/**
+ * Validates that a JSON value is an object and returns its narrowed representation.
+ *
+ * @param value - JSON value to validate.
+ * @param label - Human-readable path included in validation errors.
+ * @returns The value narrowed to `JsonObject`.
+ * @throws When the value is missing, null, an array, or a primitive.
+ */
 export function asObject(value: JsonValue | undefined, label: string): JsonObject {
   if (value === null || typeof value !== "object" || Array.isArray(value)) {
     throw new Error(`${label} must be a JSON object`);
@@ -177,10 +248,12 @@ export function asObject(value: JsonValue | undefined, label: string): JsonObjec
   return value;
 }
 
+/** Reads a required nested object property with a contextual validation error. */
 export function requiredObject(object: JsonObject, key: string, label: string): JsonObject {
   return asObject(object[key], `${label}.${key}`);
 }
 
+/** Reads a required array property with a contextual validation error. */
 export function requiredArray(object: JsonObject, key: string, label: string): JsonValue[] {
   const value = object[key];
   if (!Array.isArray(value)) {
@@ -189,6 +262,7 @@ export function requiredArray(object: JsonObject, key: string, label: string): J
   return value;
 }
 
+/** Reads a required non-empty string property with a contextual validation error. */
 export function requiredString(object: JsonObject, key: string, label: string): string {
   const value = object[key];
   if (typeof value !== "string" || value.trim() === "") {
@@ -197,6 +271,7 @@ export function requiredString(object: JsonObject, key: string, label: string): 
   return value;
 }
 
+/** Reads a required finite numeric property with a contextual validation error. */
 function requiredNumber(object: JsonObject, key: string, label: string): number {
   const value = object[key];
   if (typeof value !== "number" || !Number.isFinite(value)) {
@@ -205,14 +280,17 @@ function requiredNumber(object: JsonObject, key: string, label: string): number 
   return value;
 }
 
+/** Returns a non-empty string value or null when the value is absent or invalid. */
 function stringValue(value: JsonValue | undefined): string | null {
   return typeof value === "string" && value !== "" ? value : null;
 }
 
+/** Returns a finite numeric value or null when the value is absent or invalid. */
 function numberValue(value: JsonValue | undefined): number | null {
   return typeof value === "number" && Number.isFinite(value) ? value : null;
 }
 
+/** Extracts normalized CloudStack error fields from a response object. */
 function readApiError(object: JsonObject): {
   message: string;
   errorCode: number | null;
@@ -231,10 +309,12 @@ function readApiError(object: JsonObject): {
   };
 }
 
+/** Locates and extracts CloudStack error details from a complete response body. */
 function readApiErrorBody(body: JsonValue): ReturnType<typeof readApiError> {
   if (body === null || typeof body !== "object" || Array.isArray(body)) return null;
   const root = body;
   const first = Object.values(root)[0];
+  // Prefer the first response envelope, but also support unwrapped error objects.
   const candidate = first !== null && typeof first === "object" && !Array.isArray(first)
     ? first
     : root;
