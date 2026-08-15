@@ -1,6 +1,6 @@
 export {
   DeploymentOrchestrator,
-} from "./core/index.js";
+} from "./core/deployment-orchestrator.js";
 export { buildApiJobGraph } from "./core/api-job-graph.js";
 export { resolveJobCase } from "./core/job-definition.js";
 export { OrchestratorStore } from "./database/store.js";
@@ -15,7 +15,6 @@ export {
   FakeCloudStackClient,
 } from "./requests/client.js";
 export { createCloudStackHandlers } from "./requests/handlers.js";
-export * from "./requests/api/index.js";
 export { createDatabase } from "./database/database.js";
 export {
   migrateToLatest,

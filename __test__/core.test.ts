@@ -1,17 +1,13 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import {
-  DeploymentOrchestrator,
-  type HandlerRegistry,
-  type JobRunContext,
-  type JsonValue,
-} from "../src/index.js";
+import { DeploymentOrchestrator } from "../src/core/deployment-orchestrator.js";
 import {
   JobExecutor,
 } from "../src/core/job-executor.js";
 import { rollbackSuccessfulJobs } from "../src/core/rollback.js";
 import { Scheduler } from "../src/core/scheduler.js";
 import { OrchestratorStore } from "../src/database/store.js";
+import type { HandlerRegistry, JobRunContext, JsonValue } from "../src/types.js";
 
 function inputObject(input: JsonValue | null): Record<string, JsonValue> {
   assert(input !== null && typeof input === "object" && !Array.isArray(input));

@@ -1,18 +1,16 @@
 import assert from "node:assert/strict";
 import { join } from "node:path";
 import test from "node:test";
-import {
-  createCloudStackHandlers,
-  DeploymentOrchestrator,
-  FakeCloudStackClient,
-  OrchestratorStore,
-  resolveJobCase,
-  type JsonValue,
-} from "../../src/index.js";
+import { DeploymentOrchestrator } from "../../src/core/deployment-orchestrator.js";
+import { resolveJobCase } from "../../src/core/job-definition.js";
+import { OrchestratorStore } from "../../src/database/store.js";
 import {
   listCloudDeploymentCases,
   loadCloudDeploymentCase,
 } from "../../src/interfaces/cli/app.js";
+import { FakeCloudStackClient } from "../../src/requests/client.js";
+import { createCloudStackHandlers } from "../../src/requests/handlers.js";
+import type { JsonValue } from "../../src/types.js";
 
 interface FakeApi {
   baseUrl: string;

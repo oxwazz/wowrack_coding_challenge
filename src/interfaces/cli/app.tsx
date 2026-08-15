@@ -9,7 +9,7 @@ import { FakeCloudStackClient } from "../../requests/client.js";
 import { createCloudStackHandlers } from "../../requests/handlers.js";
 import { CLI_DEFAULTS, cloudStackApiUrl } from "../../constants.js";
 import { errorMessage } from "../../utils.js";
-import { DeploymentOrchestrator } from "../../core/index.js";
+import { DeploymentOrchestrator } from "../../core/deployment-orchestrator.js";
 import type {
   CloudDeploymentCase,
   JobRunRecord,

@@ -5,7 +5,7 @@ import { join } from "node:path";
 import test from "node:test";
 import { sql } from "kysely";
 import { rollbackLastMigration } from "../../src/database/migrations.js";
-import { OrchestratorStore } from "../../src/index.js";
+import { OrchestratorStore } from "../../src/database/store.js";
 
 test("runs ordered Kysely schema and reference-data migrations", async () => {
   const store = new OrchestratorStore(":memory:");

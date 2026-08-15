@@ -1,10 +1,10 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import * as core from "../src/index.js";
-import { DeploymentOrchestrator } from "../src/core/index.js";
+import { DeploymentOrchestrator } from "../src/core/deployment-orchestrator.js";
 import { OrchestratorStore } from "../src/database/store.js";
 
-test("core index exposes only the supported reusable boundary", () => {
+test("package index exposes only the supported reusable boundary", () => {
   assert.equal(core.DeploymentOrchestrator, DeploymentOrchestrator);
   assert.equal(core.OrchestratorStore, OrchestratorStore);
   assert.equal(typeof core.resolveJobCase, "function");

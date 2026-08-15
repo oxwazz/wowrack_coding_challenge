@@ -3,7 +3,7 @@ import type {
   DOCUMENTED_COMMANDS,
   JOB_STATUSES,
 } from "./constants.js";
-import type { DeploymentOrchestrator } from "./core/index.js";
+import type { DeploymentOrchestrator } from "./core/deployment-orchestrator.js";
 import type { ApiJobId } from "./requests/api/specs.js";
 
 export type JsonPrimitive = string | number | boolean | null;
