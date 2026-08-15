@@ -1,12 +1,15 @@
 import { errorMessage } from "../utils.js";
 import type {
   ApiParameters,
-  AsyncJobResponse,
   DocumentedCommand,
   FakeCloudStackClientOptions,
   JsonObject,
   JsonValue,
 } from "../types.js";
+import {
+  queryAsyncJobResult,
+  type AsyncJobResponse,
+} from "./api/query-async-job-result.js";
 
 export class FakeCloudStackApiError extends Error {
   readonly command: DocumentedCommand;
@@ -164,20 +167,11 @@ export class FakeCloudStackClient {
    * @returns The normalized status (`0`, `1`, or `2`) and result object.
    */
   async queryAsyncJob(jobId: string, signal?: AbortSignal): Promise<AsyncJobResponse> {
-    const response = await this.request("queryAsyncJobResult", { jobid: jobId, sleep: 0, timeout: 0 }, signal);
-    const rawStatus = requiredNumber(response, "jobstatus", "queryAsyncJobResult response");
-    if (rawStatus !== 0 && rawStatus !== 1 && rawStatus !== 2) {
-      throw new FakeCloudStackApiError(
-        "queryAsyncJobResult",
-        `Unknown async job status ${rawStatus}`,
-        response,
-      );
-    }
-    const jobResultValue = response.jobresult;
-    const jobResult = jobResultValue === undefined || jobResultValue === null
-      ? {}
-      : asObject(jobResultValue, "queryAsyncJobResult jobresult");
-    return { jobId, jobStatus: rawStatus, jobResult };
+    return queryAsyncJobResult({
+      client: this,
+      query: { jobid: jobId, sleep: 0, timeout: 0 },
+      signal,
+    });
   }
 
   /**
@@ -267,15 +261,6 @@ export function requiredString(object: JsonObject, key: string, label: string): 
   const value = object[key];
   if (typeof value !== "string" || value.trim() === "") {
     throw new Error(`${label}.${key} must be a non-empty string`);
-  }
-  return value;
-}
-
-/** Reads a required finite numeric property with a contextual validation error. */
-function requiredNumber(object: JsonObject, key: string, label: string): number {
-  const value = object[key];
-  if (typeof value !== "number" || !Number.isFinite(value)) {
-    throw new Error(`${label}.${key} must be a finite number`);
   }
   return value;
 }

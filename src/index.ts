@@ -17,6 +17,7 @@ export {
   FakeCloudStackClient,
 } from "./requests/client.js";
 export { createCloudStackHandlers } from "./requests/handlers.js";
+export * from "./requests/api/index.js";
 export { createDatabase } from "./database/database.js";
 export {
   migrateToLatest,
@@ -26,7 +27,6 @@ export type { Database } from "./database/types.js";
 export type {
   ApiParameter,
   ApiParameters,
-  AsyncJobResponse,
   CloudDeploymentCase,
   CloudStackJobId,
   DeploymentOrchestratorConfig,

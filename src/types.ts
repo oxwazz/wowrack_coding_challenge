@@ -156,12 +156,6 @@ export interface FakeCloudStackClientOptions {
   baseUrl: string;
 }
 
-export interface AsyncJobResponse {
-  jobId: string;
-  jobStatus: 0 | 1 | 2;
-  jobResult: JsonObject;
-}
-
 export type CloudDeploymentCase = JobCaseDefinition;
 
 export interface InteractiveCliOptions {

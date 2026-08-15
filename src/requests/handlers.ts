@@ -1,7 +1,6 @@
 import { CLOUDSTACK_HANDLER_TYPES } from "../constants.js";
 import type {
   ApiParameters,
-  DocumentedCommand,
   HandlerRegistry,
   JobRollbackContext,
   JobRunContext,
@@ -10,12 +9,18 @@ import type {
 import {
   asObject,
   FakeCloudStackClient,
-  requiredArray,
-  requiredObject,
   requiredString,
 } from "./client.js";
-
-type ResultKey = "vpc" | "networkacllist" | "networkacl" | "virtualmachine";
+import { createNetworkAclList } from "./api/create-network-acl-list.js";
+import { createNetworkAcl } from "./api/create-network-acl.js";
+import { createNetwork } from "./api/create-network.js";
+import { createVpc } from "./api/create-vpc.js";
+import { deleteNetwork } from "./api/delete-network.js";
+import { deleteVpc } from "./api/delete-vpc.js";
+import { deployVirtualMachine } from "./api/deploy-virtual-machine.js";
+import { enableStaticNat } from "./api/enable-static-nat.js";
+import { listPublicIpAddresses } from "./api/list-public-ip-addresses.js";
+import { replaceNetworkAclList } from "./api/replace-network-acl-list.js";
 
 /**
  * Builds the handler registry that maps deployment step types to CloudStack operations.
@@ -42,27 +47,24 @@ export function createCloudStackHandlers(
       /** Creates a VPC and returns the object produced by the asynchronous API job. */
       async run(context) {
         const input = inputObject(context);
-        return runAsyncObject(
+        return createVpc({
           client,
-          "createVpc",
-          {
+          query: {
             cidr: requiredInputString(input, "cidr", context.jobId),
             name: optionalInputString(input, "name"),
             ...apiControl(input),
           },
-          "vpc",
-          context,
-        );
+          signal: context.signal,
+        });
       },
       /** Deletes the VPC created by this step. */
       async rollback(context) {
         const result = resultObject(context);
-        await runAsyncSuccess(
+        await deleteVpc({
           client,
-          "deleteVpc",
-          { id: requiredString(result, "id", `${context.jobId} result`), result: 1 },
-          context,
-        );
+          query: { id: requiredString(result, "id", `${context.jobId} result`), result: 1 },
+          signal: context.signal,
+        });
       },
     },
 
@@ -71,28 +73,26 @@ export function createCloudStackHandlers(
       async run(context) {
         const input = inputObject(context);
         const vpc = dependencyObject(context, "vpc");
-        const response = await client.request(
-          "createNetwork",
-          {
+        return createNetwork({
+          client,
+          query: {
             vpcid: requiredString(vpc, "id", "vpc result"),
             name: requiredInputString(input, "name", context.jobId),
             gateway: requiredInputString(input, "gateway", context.jobId),
             netmask: requiredInputString(input, "netmask", context.jobId),
             ...apiControl(input),
           },
-          context.signal,
-        );
-        return requiredObject(response, "network", "createNetwork response");
+          signal: context.signal,
+        });
       },
       /** Deletes the network created by this step. */
       async rollback(context) {
         const result = resultObject(context);
-        await runAsyncSuccess(
+        await deleteNetwork({
           client,
-          "deleteNetwork",
-          { id: requiredString(result, "id", `${context.jobId} result`), result: 1 },
-          context,
-        );
+          query: { id: requiredString(result, "id", `${context.jobId} result`), result: 1 },
+          signal: context.signal,
+        });
       },
     },
 
@@ -101,17 +101,15 @@ export function createCloudStackHandlers(
       async run(context) {
         const input = inputObject(context);
         const vpc = dependencyObject(context, "vpc");
-        return runAsyncObject(
+        return createNetworkAclList({
           client,
-          "createNetworkACLList",
-          {
+          query: {
             vpcid: requiredString(vpc, "id", "vpc result"),
             name: requiredInputString(input, "name", context.jobId),
             ...apiControl(input),
           },
-          "networkacllist",
-          context,
-        );
+          signal: context.signal,
+        });
       },
     },
 
@@ -120,10 +118,9 @@ export function createCloudStackHandlers(
       async run(context) {
         const input = inputObject(context);
         const aclList = dependencyObject(context, "acl-list");
-        return runAsyncObject(
+        return createNetworkAcl({
           client,
-          "createNetworkACL",
-          {
+          query: {
             aclid: requiredString(aclList, "id", "acl-list result"),
             protocol: requiredInputString(input, "protocol", context.jobId),
             cidrlist: optionalInputString(input, "cidrList"),
@@ -133,9 +130,8 @@ export function createCloudStackHandlers(
             endport: optionalInputNumber(input, "endPort"),
             ...apiControl(input),
           },
-          "networkacl",
-          context,
-        );
+          signal: context.signal,
+        });
       },
     },
 
@@ -148,12 +144,11 @@ export function createCloudStackHandlers(
         // The rule response carries the parent ACL-list ID needed by the replace command.
         const aclListId = requiredString(aclRule, "aclid", "acl-rule result");
         const networkId = requiredString(subnet, "id", "subnet result");
-        await runAsyncSuccess(
+        await replaceNetworkAclList({
           client,
-          "replaceNetworkACLList",
-          { aclid: aclListId, networkid: networkId, ...apiControl(input) },
-          context,
-        );
+          query: { aclid: aclListId, networkid: networkId, ...apiControl(input) },
+          signal: context.signal,
+        });
         return { success: true, aclListId, networkId };
       },
     },
@@ -163,38 +158,30 @@ export function createCloudStackHandlers(
       async run(context) {
         const input = inputObject(context);
         const attachment = dependencyObject(context, "attach-acl");
-        return runAsyncObject(
+        return deployVirtualMachine({
           client,
-          "deployVirtualMachine",
-          {
+          query: {
             networkids: requiredString(attachment, "networkId", "attach-acl result"),
             serviceofferingid: requiredInputString(input, "serviceOfferingId", context.jobId),
             templateid: requiredInputString(input, "templateId", context.jobId),
             name: optionalInputString(input, "name"),
             ...apiControl(input),
           },
-          "virtualmachine",
-          context,
-        );
+          signal: context.signal,
+        });
       },
     },
 
     [CLOUDSTACK_HANDLER_TYPES.listPublicIp]: {
       /** Returns the first free public IP address reported by CloudStack. */
       async run(context) {
-        const response = await client.request(
-          "listPublicIpAddresses",
-          apiControl(inputObject(context)),
-          context.signal,
-        );
-        const addresses = requiredArray(
-          response,
-          "publicipaddress",
-          "listPublicIpAddresses response",
-        );
+        const addresses = await listPublicIpAddresses({
+          client,
+          query: apiControl(inputObject(context)),
+          signal: context.signal,
+        });
         // Preserve API ordering and select the first address that is currently allocatable.
         const freeAddress = addresses
-          .map((address, index) => asObject(address, `publicipaddress[${index}]`))
           .find((address) => String(address.state).toLowerCase() === "free");
         if (freeAddress === undefined) {
           throw new Error("No free public IP address is available");
@@ -214,19 +201,16 @@ export function createCloudStackHandlers(
         const networkId = vmNetworkId(vm);
         const publicIpId = requiredString(publicIp, "id", "public-ip result");
         const virtualMachineId = requiredString(vm, "id", "vm result");
-        const response = await client.request(
-          "enableStaticNat",
-          {
+        const response = await enableStaticNat({
+          client,
+          query: {
             networkid: networkId,
             ipaddressid: publicIpId,
             virtualmachineid: virtualMachineId,
             ...apiControl(input),
           },
-          context.signal,
-        );
-        if (response.success !== true) {
-          throw new Error("enableStaticNat did not return success=true");
-        }
+          signal: context.signal,
+        });
         return {
           ...response,
           networkId,
@@ -236,42 +220,6 @@ export function createCloudStackHandlers(
       },
     },
   };
-}
-
-/** Runs an asynchronous command and extracts the required object from its result. */
-async function runAsyncObject(
-  client: FakeCloudStackClient,
-  command: Exclude<DocumentedCommand, "queryAsyncJobResult">,
-  parameters: ApiParameters,
-  resultKey: ResultKey,
-  context: JobRunContext,
-): Promise<JsonObject> {
-  const result = await runAsync(client, command, parameters, context);
-  return requiredObject(result, resultKey, `${command} async result`);
-}
-
-/** Runs an asynchronous command and verifies that it reports success=true. */
-async function runAsyncSuccess(
-  client: FakeCloudStackClient,
-  command: Exclude<DocumentedCommand, "queryAsyncJobResult">,
-  parameters: ApiParameters,
-  context: JobRunContext | JobRollbackContext,
-): Promise<void> {
-  const result = await runAsync(client, command, parameters, context);
-  if (result.success !== true) {
-    throw new Error(`${command} did not return success=true`);
-  }
-}
-
-/** Starts a CloudStack asynchronous command and waits for its terminal result. */
-async function runAsync(
-  client: FakeCloudStackClient,
-  command: Exclude<DocumentedCommand, "queryAsyncJobResult">,
-  parameters: ApiParameters,
-  context: JobRunContext | JobRollbackContext,
-): Promise<JsonObject> {
-  const asyncJobId = await client.startAsyncJob(command, parameters, context.signal);
-  return client.waitForAsyncJob(asyncJobId, context.signal);
 }
 
 /** Normalizes a job's optional input into a validated JSON object. */

@@ -1,0 +1,32 @@
+import type { JsonObject } from "../../types.js";
+import type { FakeCloudStackClient } from "../client.js";
+import { asObject, requiredArray } from "../client.js";
+import type { ApiControlQuery } from "./shared.js";
+
+export type ListPublicIpAddressesQuery = ApiControlQuery;
+
+export interface ListPublicIpAddressesProps {
+  client: FakeCloudStackClient;
+  query: ListPublicIpAddressesQuery;
+  signal?: AbortSignal | undefined;
+}
+
+export type PublicIpAddress = JsonObject & { id?: string; state?: string };
+export type ListPublicIpAddressesResult = PublicIpAddress[];
+
+export async function listPublicIpAddresses(
+  props: ListPublicIpAddressesProps,
+): Promise<ListPublicIpAddressesResult> {
+  const response = await props.client.request(
+    "listPublicIpAddresses",
+    props.query,
+    props.signal,
+  );
+  return requiredArray(
+    response,
+    "publicipaddress",
+    "listPublicIpAddresses response",
+  ).map((address, index) => (
+    asObject(address, `publicipaddress[${index}]`) as PublicIpAddress
+  ));
+}

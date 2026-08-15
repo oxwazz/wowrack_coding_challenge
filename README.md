@@ -161,8 +161,9 @@ src/
 │   ├── cases/                case demo
 │   └── app.tsx               tampilan dan entry point CLI
 └── requests/
-    ├── client.ts             HTTP client
-    └── handlers.ts           handler CloudStack
+    ├── api/                  satu file per command beserta query, props, dan return type
+    ├── client.ts             HTTP client bersama
+    └── handlers.ts           komposisi handler CloudStack
 
 __test__/                    unit dan integration test
 ```
