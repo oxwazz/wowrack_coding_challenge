@@ -1,0 +1,41 @@
+{
+  "name": "deployment-job-orchestrator",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "A persistent DAG-based deployment job orchestrator",
+  "exports": "./dist/src/index.js",
+  "types": "./dist/src/index.d.ts",
+  "bin": {
+    "wow-deploy": "./dist/src/interfaces/cli/app.js"
+  },
+  "files": [
+    "dist/src",
+    "src/database/__generated__/deployments.sqlite",
+    "src/interfaces/cli/cases",
+    "README.md"
+  ],
+  "scripts": {
+    "clean": "node --eval \"require('node:fs').rmSync('dist', { recursive: true, force: true })\"",
+    "build": "npm run clean && tsc -p tsconfig.json",
+    "prepack": "npm run build",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "npm run build && node --test 'dist/__test__/**/*.test.js'",
+    "cli": "npm run build && node --env-file-if-exists=.env dist/src/interfaces/cli/app.js"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "^9.6.0",
+    "@types/node": "^24.0.0",
+    "@types/react": "^19.2.18",
+    "typescript": "^5.9.0"
+  },
+  "engines": {
+    "node": ">=22.5"
+  },
+  "dependencies": {
+    "better-sqlite3": "^13.0.3",
+    "ink": "^7.1.1",
+    "kysely": "^0.29.5",
+    "react": "^19.2.8"
+  }
+}
