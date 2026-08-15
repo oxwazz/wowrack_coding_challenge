@@ -3,10 +3,10 @@ import type { FakeCloudStackClient } from "../client.js";
 import { asObject, requiredArray } from "../client.js";
 import type { ApiControlQuery, ApiJobSpec } from "./shared.js";
 
-export const listPublicIpAddressesCommand = "listPublicIpAddresses" as const;
-
 export const listPublicIpAddressesSpec = {
   id: "public-ip",
+  command: "listPublicIpAddresses",
+  resultKey: "publicipaddress",
   handler: "list_public_ip",
   dependsOn: [],
 } as const satisfies ApiJobSpec;
@@ -26,14 +26,14 @@ export async function listPublicIpAddresses(
   props: ListPublicIpAddressesProps,
 ): Promise<ListPublicIpAddressesResult> {
   const response = await props.client.request(
-    listPublicIpAddressesCommand,
+    listPublicIpAddressesSpec.command,
     props.query,
     props.signal,
   );
   return requiredArray(
     response,
-    "publicipaddress",
-    "listPublicIpAddresses response",
+    listPublicIpAddressesSpec.resultKey,
+    `${listPublicIpAddressesSpec.command} response`,
   ).map((address, index) => (
     asObject(address, `publicipaddress[${index}]`) as PublicIpAddress
   ));

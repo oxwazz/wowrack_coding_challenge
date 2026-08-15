@@ -7,8 +7,8 @@ import type {
 } from "../types.js";
 import type { ApiCommand, AsyncApiCommand } from "./api/commands.js";
 import {
-  queryAsyncJobResultCommand,
   queryAsyncJobResult,
+  queryAsyncJobResultSpec,
   type QueryAsyncJobResult,
 } from "./api/query-async-job-result.js";
 
@@ -204,7 +204,7 @@ export class FakeCloudStackClient {
         const message = failure?.message ?? stringValue(job.jobResult.errortext)
           ?? `Async job ${jobId} failed`;
         throw new FakeCloudStackApiError(
-          queryAsyncJobResultCommand,
+          queryAsyncJobResultSpec.command,
           message,
           job.jobResult,
           failure?.errorCode ?? null,

@@ -23,8 +23,8 @@ test("buildApiJobGraph rejects invalid API selections", () => {
   assert.throws(() => buildApiJobGraph(["subnet"]), /requires missing dependency: vpc/);
   assert.throws(
     () => buildApiJobGraph(["a", "b"], {
-      a: { id: "a", handler: "a", dependsOn: ["b"] },
-      b: { id: "b", handler: "b", dependsOn: ["a"] },
+      a: { id: "a", command: "a", handler: "a", dependsOn: ["b"] },
+      b: { id: "b", command: "b", handler: "b", dependsOn: ["a"] },
     }),
     /dependency cycle/,
   );

@@ -3,10 +3,10 @@ import type { FakeCloudStackClient } from "../client.js";
 import type { ApiControlQuery, ApiJobSpec } from "./shared.js";
 import { runAsyncObject } from "./shared.js";
 
-export const deployVirtualMachineCommand = "deployVirtualMachine" as const;
-
 export const deployVirtualMachineSpec = {
   id: "vm",
+  command: "deployVirtualMachine",
+  resultKey: "virtualmachine",
   handler: "deploy_vm",
   dependsOn: ["subnet"],
 } as const satisfies ApiJobSpec;
@@ -31,9 +31,9 @@ export async function deployVirtualMachine(
 ): Promise<DeployVirtualMachineResult> {
   const result = await runAsyncObject(
     props.client,
-    deployVirtualMachineCommand,
+    deployVirtualMachineSpec.command,
     props.query,
-    "virtualmachine",
+    deployVirtualMachineSpec.resultKey,
     props.signal,
   );
   return result as DeployVirtualMachineResult;

@@ -3,10 +3,10 @@ import type { FakeCloudStackClient } from "../client.js";
 import type { ApiControlQuery, ApiJobSpec } from "./shared.js";
 import { runAsyncObject } from "./shared.js";
 
-export const createNetworkAclCommand = "createNetworkACL" as const;
-
 export const createNetworkAclSpec = {
   id: "acl-rule",
+  command: "createNetworkACL",
+  resultKey: "networkacl",
   handler: "create_acl_rule",
   dependsOn: ["acl-list"],
 } as const satisfies ApiJobSpec;
@@ -34,9 +34,9 @@ export async function createNetworkAcl(
 ): Promise<CreateNetworkAclResult> {
   const result = await runAsyncObject(
     props.client,
-    createNetworkAclCommand,
+    createNetworkAclSpec.command,
     props.query,
-    "networkacl",
+    createNetworkAclSpec.resultKey,
     props.signal,
   );
   return result as CreateNetworkAclResult;

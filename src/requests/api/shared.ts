@@ -3,8 +3,14 @@ import type { FakeCloudStackClient } from "../client.js";
 import type { AsyncApiCommand } from "./commands.js";
 import { requiredObject } from "../client.js";
 
-/** Declarative metadata used to build an executable job graph from API IDs. */
-export interface ApiJobSpec {
+/** Metadata owned by one CloudStack request implementation. */
+export interface ApiRequestSpec {
+  command: string;
+  resultKey?: string;
+}
+
+/** Request metadata used to build an executable job graph from API IDs. */
+export interface ApiJobSpec extends ApiRequestSpec {
   id: string;
   handler: string;
   dependsOn: readonly string[];
