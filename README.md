@@ -136,7 +136,8 @@ Folder `src/requests` berisi:
 - `api/commands.ts`: metadata command yang disusun dari constant milik setiap file API.
 - `api/specs.ts`: registry seluruh API yang dapat menjadi node deployment.
 
-Request utama yang digunakan antara lain `createVpc`, `createNetwork`, `createNetworkACLList`, `deployVirtualMachine`, dan `enableStaticNat`.
+Request utama yang digunakan antara lain `createVpc`, `createNetwork`, `createNetworkACLList`,
+`deployVirtualMachine`, `destroyVirtualMachine`, dan `enableStaticNat`.
 
 Setiap job spec mendeklarasikan `id`, `handler`, dan `dependsOn`. Kolom `jobs.definition`
 tidak menyimpan ulang metadata tersebut; nilainya hanya array ID seperti berikut:

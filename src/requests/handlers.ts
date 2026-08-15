@@ -23,6 +23,7 @@ import {
   deployVirtualMachine,
   deployVirtualMachineSpec,
 } from "./api/deploy-virtual-machine.js";
+import { destroyVirtualMachine } from "./api/destroy-virtual-machine.js";
 import { enableStaticNat, enableStaticNatSpec } from "./api/enable-static-nat.js";
 import {
   listPublicIpAddresses,
@@ -177,6 +178,15 @@ export function createCloudStackHandlers(
             name: optionalInputString(input, "name"),
             ...apiControl(input),
           },
+          signal: context.signal,
+        });
+      },
+      /** Destroys the virtual machine before its network and VPC are removed. */
+      async rollback(context) {
+        const result = resultObject(context);
+        await destroyVirtualMachine({
+          client,
+          query: { id: requiredString(result, "id", `${context.jobId} result`), result: 1 },
           signal: context.signal,
         });
       },

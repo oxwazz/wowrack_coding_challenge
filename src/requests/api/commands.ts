@@ -5,6 +5,7 @@ import { createVpcSpec } from "./create-vpc.js";
 import { deleteNetworkSpec } from "./delete-network.js";
 import { deleteVpcSpec } from "./delete-vpc.js";
 import { deployVirtualMachineSpec } from "./deploy-virtual-machine.js";
+import { destroyVirtualMachineSpec } from "./destroy-virtual-machine.js";
 import { enableStaticNatSpec } from "./enable-static-nat.js";
 import { listPublicIpAddressesSpec } from "./list-public-ip-addresses.js";
 import { queryAsyncJobResultSpec } from "./query-async-job-result.js";
@@ -21,6 +22,7 @@ export const API_COMMANDS = [
   deployVirtualMachineSpec.command,
   listPublicIpAddressesSpec.command,
   enableStaticNatSpec.command,
+  destroyVirtualMachineSpec.command,
   deleteVpcSpec.command,
   deleteNetworkSpec.command,
 ] as const;

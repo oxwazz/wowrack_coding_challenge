@@ -294,15 +294,20 @@ test("turns jobstatus=2 into failure and calls documented rollback APIs", async 
     assert.equal(result.jobRun.status, "ROLLED_BACK");
     assert.equal(states["acl-rule"], "FAILED");
     assert.equal(states["attach-acl"], "ROLLBACK_SKIPPED");
-    assert.equal(states.vm, "ROLLBACK_SKIPPED");
+    assert.equal(states.vm, "ROLLED_BACK");
     assert.equal(states.subnet, "ROLLED_BACK");
     assert.equal(states.vpc, "ROLLED_BACK");
 
     const commands = api.requests.map((url) => url.searchParams.get("command"));
     assert(commands.includes("deleteNetwork"));
     assert(commands.includes("deleteVpc"));
+    assert(commands.includes("destroyVirtualMachine"));
     assert(commands.includes("replaceNetworkACLList"));
     assert(commands.includes("deployVirtualMachine"));
+    assert(
+      commands.indexOf("destroyVirtualMachine") < commands.indexOf("deleteNetwork"),
+      "VM must be destroyed before its network",
+    );
   } finally {
     await orchestrator.close();
     await api.close();
@@ -395,6 +400,7 @@ async function startFakeApi(): Promise<FakeApi> {
       deployVirtualMachine: {
         virtualmachine: { id: "vm-1", networkid: url.searchParams.get("networkids") ?? "" },
       },
+      destroyVirtualMachine: { success: true },
       deleteNetwork: { success: true },
       deleteVpc: { success: true },
     };

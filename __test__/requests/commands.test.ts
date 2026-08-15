@@ -13,6 +13,7 @@ test("API_COMMANDS is assembled from every API-owned command", () => {
     "deployVirtualMachine",
     "listPublicIpAddresses",
     "enableStaticNat",
+    "destroyVirtualMachine",
     "deleteVpc",
     "deleteNetwork",
   ]);
