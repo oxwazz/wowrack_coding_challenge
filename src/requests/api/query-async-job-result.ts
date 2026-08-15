@@ -20,8 +20,6 @@ export interface QueryAsyncJobResult {
   jobResult: JsonObject;
 }
 
-export type AsyncJobResponse = QueryAsyncJobResult;
-
 export async function queryAsyncJobResult(
   props: QueryAsyncJobResultProps,
 ): Promise<QueryAsyncJobResult> {

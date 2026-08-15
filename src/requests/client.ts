@@ -8,7 +8,7 @@ import type {
 } from "../types.js";
 import {
   queryAsyncJobResult,
-  type AsyncJobResponse,
+  type QueryAsyncJobResult,
 } from "./api/query-async-job-result.js";
 
 export class FakeCloudStackApiError extends Error {
@@ -166,7 +166,7 @@ export class FakeCloudStackClient {
    * @param signal - Optional cancellation signal.
    * @returns The normalized status (`0`, `1`, or `2`) and result object.
    */
-  async queryAsyncJob(jobId: string, signal?: AbortSignal): Promise<AsyncJobResponse> {
+  async queryAsyncJob(jobId: string, signal?: AbortSignal): Promise<QueryAsyncJobResult> {
     return queryAsyncJobResult({
       client: this,
       query: { jobid: jobId, sleep: 0, timeout: 0 },

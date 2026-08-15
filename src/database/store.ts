@@ -13,6 +13,7 @@ import type {
   JobTransition,
   JsonValue,
 } from "../types.js";
+import { API_JOB_SPECS, type ApiJobId } from "../requests/api/specs.js";
 
 /** Returns the current time as an ISO-8601 timestamp for persisted records. */
 const now = (): string => new Date().toISOString();
@@ -29,8 +30,12 @@ const rollbackFinalStatuses = new Set<JobStatus>([
 ]);
 
 /** Reads the current API-ID array and tolerates the legacy shape during migration rollback. */
-function definitionApiIds(definition: unknown, jobDefinitionId: string): string[] {
-  if (Array.isArray(definition) && definition.every((id) => typeof id === "string")) {
+function isApiJobId(value: unknown): value is ApiJobId {
+  return typeof value === "string" && value in API_JOB_SPECS;
+}
+
+function definitionApiIds(definition: unknown, jobDefinitionId: string): ApiJobId[] {
+  if (Array.isArray(definition) && definition.every(isApiJobId)) {
     return [...definition];
   }
   if (definition !== null && typeof definition === "object" && "steps" in definition) {
@@ -38,7 +43,8 @@ function definitionApiIds(definition: unknown, jobDefinitionId: string): string[
     if (Array.isArray(steps) && steps.every((step) => (
       step !== null && typeof step === "object" && "id" in step && typeof step.id === "string"
     ))) {
-      return steps.map((step) => step.id);
+      const apiIds = steps.map((step) => step.id);
+      if (apiIds.every(isApiJobId)) return apiIds;
     }
   }
   throw new Error(`Invalid job definition: ${jobDefinitionId}`);

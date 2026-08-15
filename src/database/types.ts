@@ -5,6 +5,7 @@ import type {
   JobStatus,
   JsonValue,
 } from "../types.js";
+import type { ApiJobId } from "../requests/api/specs.js";
 
 type JsonColumn<T = JsonValue | null> = ColumnType<
   T,
@@ -15,7 +16,7 @@ type JsonColumn<T = JsonValue | null> = ColumnType<
 export interface JobsTable {
   id: string;
   name: string;
-  definition: JsonColumn<string[]>;
+  definition: JsonColumn<ApiJobId[]>;
   createdAt: string;
   updatedAt: string;
 }

@@ -27,33 +27,6 @@ export function cloudStackApiUrl(): string {
   return apiUrl;
 }
 
-export const CLOUDSTACK_JOB_IDS = {
-  vpc: "vpc",
-  subnet: "subnet",
-  aclList: "acl-list",
-  aclRule: "acl-rule",
-  attachAcl: "attach-acl",
-  vm: "vm",
-  publicIp: "public-ip",
-  staticNat: "static-nat",
-} as const;
-
-export const CLOUDSTACK_JOB_DEFINITION_IDS = {
-  withPublicIp: "deploy-vm-with-public-ip",
-  withoutPublicIp: "deploy-vm-without-public-ip",
-} as const;
-
-export const CLOUDSTACK_HANDLER_TYPES = {
-  createVpc: "create_vpc",
-  createSubnet: "create_subnet",
-  createAclList: "create_acl_list",
-  createAclRule: "create_acl_rule",
-  attachAclList: "attach_acl_list",
-  deployVm: "deploy_vm",
-  listPublicIp: "list_public_ip",
-  enableStaticNat: "enable_static_nat",
-} as const;
-
 export const DOCUMENTED_COMMANDS = [
   "queryAsyncJobResult",
   "createVpc",

@@ -1,10 +1,10 @@
 import type {
-  CLOUDSTACK_JOB_IDS,
   JOB_RUN_STATUSES,
   DOCUMENTED_COMMANDS,
   JOB_STATUSES,
 } from "./constants.js";
 import type { DeploymentOrchestrator } from "./core/index.js";
+import type { ApiJobId } from "./requests/api/specs.js";
 
 export type JsonPrimitive = string | number | boolean | null;
 export type JsonValue = JsonPrimitive | JsonValue[] | { [key: string]: JsonValue };
@@ -33,7 +33,7 @@ export interface StoredJobDefinition {
   id: string;
   name: string;
   /** API IDs selected for this template; graph metadata lives in each API file. */
-  apiIds: string[];
+  apiIds: ApiJobId[];
 }
 
 export interface JobDefinitionRecord extends StoredJobDefinition {
@@ -145,8 +145,6 @@ export interface JobTransition {
   error?: string | null;
 }
 
-export type CloudStackJobId =
-  (typeof CLOUDSTACK_JOB_IDS)[keyof typeof CLOUDSTACK_JOB_IDS];
 export type DocumentedCommand = (typeof DOCUMENTED_COMMANDS)[number];
 export type ApiParameter = string | number | boolean | undefined;
 export type ApiParameters = Readonly<Record<string, ApiParameter>>;

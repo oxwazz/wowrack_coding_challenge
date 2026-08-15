@@ -6,9 +6,6 @@ export { resolveJobCase } from "./core/job-definition.js";
 export { OrchestratorStore } from "./database/store.js";
 export { sleep } from "./utils.js";
 export {
-  CLOUDSTACK_HANDLER_TYPES,
-  CLOUDSTACK_JOB_DEFINITION_IDS,
-  CLOUDSTACK_JOB_IDS,
   JOB_RUN_STATUSES,
   DOCUMENTED_COMMANDS,
   JOB_STATUSES,
@@ -29,7 +26,6 @@ export type {
   ApiParameter,
   ApiParameters,
   CloudDeploymentCase,
-  CloudStackJobId,
   DeploymentOrchestratorConfig,
   JobRunRecord,
   JobRunResult,
