@@ -3,6 +3,8 @@ import type { FakeCloudStackClient } from "../client.js";
 import type { ApiControlQuery, ApiJobSpec } from "./shared.js";
 import { runAsyncObject } from "./shared.js";
 
+export const createVpcCommand = "createVpc" as const;
+
 export const createVpcSpec = {
   id: "vpc",
   handler: "create_vpc",
@@ -25,7 +27,7 @@ export type CreateVpcResult = JsonObject & { id: string };
 export async function createVpc(props: CreateVpcProps): Promise<CreateVpcResult> {
   const result = await runAsyncObject(
     props.client,
-    "createVpc",
+    createVpcCommand,
     props.query,
     "vpc",
     props.signal,

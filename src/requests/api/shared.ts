@@ -1,8 +1,7 @@
-import type { ApiParameters, DocumentedCommand, JsonObject } from "../../types.js";
+import type { ApiParameters, JsonObject } from "../../types.js";
 import type { FakeCloudStackClient } from "../client.js";
+import type { AsyncApiCommand } from "./commands.js";
 import { requiredObject } from "../client.js";
-
-export type AsyncCommand = Exclude<DocumentedCommand, "queryAsyncJobResult">;
 
 /** Declarative metadata used to build an executable job graph from API IDs. */
 export interface ApiJobSpec {
@@ -20,7 +19,7 @@ export type ApiControlQuery = ApiParameters & Readonly<{
 /** Starts an asynchronous CloudStack command and returns its terminal result. */
 export async function runAsync(
   client: FakeCloudStackClient,
-  command: AsyncCommand,
+  command: AsyncApiCommand,
   query: ApiParameters,
   signal?: AbortSignal,
 ): Promise<JsonObject> {
@@ -31,7 +30,7 @@ export async function runAsync(
 /** Starts an asynchronous command and extracts a required object from the result. */
 export async function runAsyncObject(
   client: FakeCloudStackClient,
-  command: AsyncCommand,
+  command: AsyncApiCommand,
   query: ApiParameters,
   resultKey: string,
   signal?: AbortSignal,
@@ -43,7 +42,7 @@ export async function runAsyncObject(
 /** Starts an asynchronous command and validates its success response. */
 export async function runAsyncSuccess(
   client: FakeCloudStackClient,
-  command: AsyncCommand,
+  command: AsyncApiCommand,
   query: ApiParameters,
   signal?: AbortSignal,
 ): Promise<{ success: true }> {

@@ -27,20 +27,6 @@ export function cloudStackApiUrl(): string {
   return apiUrl;
 }
 
-export const DOCUMENTED_COMMANDS = [
-  "queryAsyncJobResult",
-  "createVpc",
-  "createNetwork",
-  "createNetworkACLList",
-  "createNetworkACL",
-  "replaceNetworkACLList",
-  "deployVirtualMachine",
-  "listPublicIpAddresses",
-  "enableStaticNat",
-  "deleteVpc",
-  "deleteNetwork",
-] as const;
-
 export const JOB_STATUSES = [
   "PENDING",
   "READY",

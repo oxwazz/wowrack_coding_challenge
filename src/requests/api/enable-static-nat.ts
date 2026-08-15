@@ -2,6 +2,8 @@ import type { JsonObject } from "../../types.js";
 import type { FakeCloudStackClient } from "../client.js";
 import type { ApiControlQuery, ApiJobSpec } from "./shared.js";
 
+export const enableStaticNatCommand = "enableStaticNat" as const;
+
 export const enableStaticNatSpec = {
   id: "static-nat",
   handler: "enable_static_nat",
@@ -25,7 +27,7 @@ export type EnableStaticNatResult = JsonObject & { success: true };
 export async function enableStaticNat(
   props: EnableStaticNatProps,
 ): Promise<EnableStaticNatResult> {
-  const response = await props.client.request("enableStaticNat", props.query, props.signal);
+  const response = await props.client.request(enableStaticNatCommand, props.query, props.signal);
   if (response.success !== true) {
     throw new Error("enableStaticNat did not return success=true");
   }

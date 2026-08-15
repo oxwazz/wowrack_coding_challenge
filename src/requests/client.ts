@@ -1,18 +1,19 @@
 import { errorMessage } from "../utils.js";
 import type {
   ApiParameters,
-  DocumentedCommand,
   FakeCloudStackClientOptions,
   JsonObject,
   JsonValue,
 } from "../types.js";
+import type { ApiCommand, AsyncApiCommand } from "./api/commands.js";
 import {
+  queryAsyncJobResultCommand,
   queryAsyncJobResult,
   type QueryAsyncJobResult,
 } from "./api/query-async-job-result.js";
 
 export class FakeCloudStackApiError extends Error {
-  readonly command: DocumentedCommand;
+  readonly command: ApiCommand;
   readonly errorCode: number | null;
   readonly cloudStackErrorCode: number | null;
   readonly responseBody: JsonValue;
@@ -20,7 +21,7 @@ export class FakeCloudStackApiError extends Error {
 
   /** Creates a structured error containing the failed command and CloudStack response details. */
   constructor(
-    command: DocumentedCommand,
+    command: ApiCommand,
     message: string,
     responseBody: JsonValue,
     errorCode: number | null = null,
@@ -71,7 +72,7 @@ export class FakeCloudStackClient {
    * ```
    */
   async request(
-    command: DocumentedCommand,
+    command: ApiCommand,
     parameters: ApiParameters = {},
     signal?: AbortSignal,
   ): Promise<JsonObject> {
@@ -151,7 +152,7 @@ export class FakeCloudStackClient {
    * @returns The non-empty asynchronous job ID from the API response.
    */
   async startAsyncJob(
-    command: Exclude<DocumentedCommand, "queryAsyncJobResult">,
+    command: AsyncApiCommand,
     parameters: ApiParameters,
     signal?: AbortSignal,
   ): Promise<string> {
@@ -203,7 +204,7 @@ export class FakeCloudStackClient {
         const message = failure?.message ?? stringValue(job.jobResult.errortext)
           ?? `Async job ${jobId} failed`;
         throw new FakeCloudStackApiError(
-          "queryAsyncJobResult",
+          queryAsyncJobResultCommand,
           message,
           job.jobResult,
           failure?.errorCode ?? null,
@@ -216,7 +217,7 @@ export class FakeCloudStackClient {
 }
 
 /** Extracts the command-specific response envelope from a CloudStack response body. */
-function responseEnvelope(body: JsonValue, command: DocumentedCommand): JsonObject {
+function responseEnvelope(body: JsonValue, command: ApiCommand): JsonObject {
   const root = asObject(body, `${command} response`);
   // CloudStack envelope keys are the lowercase command name followed by "response".
   const key = `${command.toLowerCase()}response`;

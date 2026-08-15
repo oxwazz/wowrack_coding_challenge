@@ -3,6 +3,8 @@ import type { FakeCloudStackClient } from "../client.js";
 import { requiredObject } from "../client.js";
 import type { ApiControlQuery, ApiJobSpec } from "./shared.js";
 
+export const createNetworkCommand = "createNetwork" as const;
+
 export const createNetworkSpec = {
   id: "subnet",
   handler: "create_subnet",
@@ -27,6 +29,6 @@ export type CreateNetworkResult = JsonObject & { id: string };
 export async function createNetwork(
   props: CreateNetworkProps,
 ): Promise<CreateNetworkResult> {
-  const response = await props.client.request("createNetwork", props.query, props.signal);
+  const response = await props.client.request(createNetworkCommand, props.query, props.signal);
   return requiredObject(response, "network", "createNetwork response") as CreateNetworkResult;
 }

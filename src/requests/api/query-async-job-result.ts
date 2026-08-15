@@ -2,6 +2,8 @@ import type { ApiParameters, JsonObject } from "../../types.js";
 import { FakeCloudStackApiError, type FakeCloudStackClient } from "../client.js";
 import { asObject } from "../client.js";
 
+export const queryAsyncJobResultCommand = "queryAsyncJobResult" as const;
+
 export type QueryAsyncJobResultQuery = ApiParameters & Readonly<{
   jobid: string;
   sleep?: number | undefined;
@@ -24,14 +26,14 @@ export async function queryAsyncJobResult(
   props: QueryAsyncJobResultProps,
 ): Promise<QueryAsyncJobResult> {
   const response = await props.client.request(
-    "queryAsyncJobResult",
+    queryAsyncJobResultCommand,
     props.query,
     props.signal,
   );
   const rawStatus = response.jobstatus;
   if (rawStatus !== 0 && rawStatus !== 1 && rawStatus !== 2) {
     throw new FakeCloudStackApiError(
-      "queryAsyncJobResult",
+      queryAsyncJobResultCommand,
       `Unknown async job status ${String(rawStatus)}`,
       response,
     );

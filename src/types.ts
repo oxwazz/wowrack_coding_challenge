@@ -1,6 +1,5 @@
 import type {
   JOB_RUN_STATUSES,
-  DOCUMENTED_COMMANDS,
   JOB_STATUSES,
 } from "./constants.js";
 import type { DeploymentOrchestrator } from "./core/deployment-orchestrator.js";
@@ -145,7 +144,6 @@ export interface JobTransition {
   error?: string | null;
 }
 
-export type DocumentedCommand = (typeof DOCUMENTED_COMMANDS)[number];
 export type ApiParameter = string | number | boolean | undefined;
 export type ApiParameters = Readonly<Record<string, ApiParameter>>;
 

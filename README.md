@@ -132,7 +132,8 @@ Folder `src/requests` berisi:
 
 - `client.ts`: mengirim HTTP request dan melakukan polling asynchronous job.
 - `handlers.ts`: mengubah job menjadi request CloudStack beserta rollback-nya.
-- `api/*.ts`: satu command per file beserta query, props, result, dan job spec-nya.
+- `api/*.ts`: satu command per file beserta command constant, query, props, result, dan job spec-nya.
+- `api/commands.ts`: metadata command yang disusun dari constant milik setiap file API.
 - `api/specs.ts`: registry seluruh API yang dapat menjadi node deployment.
 
 Request utama yang digunakan antara lain `createVpc`, `createNetwork`, `createNetworkACLList`, `deployVirtualMachine`, dan `enableStaticNat`.
