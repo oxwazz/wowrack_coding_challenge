@@ -13,10 +13,6 @@ import type {
   JobTransition,
   JsonValue,
 } from "../types.js";
-import {
-  DEPLOYMENT_STEP_SPECS,
-  type DeploymentStepId,
-} from "../requests/api/deployment-steps.js";
 
 /** Returns the current time as an ISO-8601 timestamp for persisted records. */
 const now = (): string => new Date().toISOString();
@@ -32,13 +28,9 @@ const rollbackFinalStatuses = new Set<JobStatus>([
   "ROLLED_BACK", "ROLLBACK_SKIPPED", "ROLLBACK_FAILED",
 ]);
 
-/** Reads the current API-ID array and tolerates the legacy shape during migration rollback. */
-function isDeploymentStepId(value: unknown): value is DeploymentStepId {
-  return typeof value === "string" && value in DEPLOYMENT_STEP_SPECS;
-}
-
-function definitionApiIds(definition: unknown, jobDefinitionId: string): DeploymentStepId[] {
-  if (Array.isArray(definition) && definition.every(isDeploymentStepId)) {
+/** Reads the current logical-step-ID array and tolerates the legacy object shape. */
+function definitionStepIds(definition: unknown, jobDefinitionId: string): string[] {
+  if (Array.isArray(definition) && definition.every((value) => typeof value === "string")) {
     return [...definition];
   }
   if (definition !== null && typeof definition === "object" && "steps" in definition) {
@@ -46,8 +38,7 @@ function definitionApiIds(definition: unknown, jobDefinitionId: string): Deploym
     if (Array.isArray(steps) && steps.every((step) => (
       step !== null && typeof step === "object" && "id" in step && typeof step.id === "string"
     ))) {
-      const apiIds = steps.map((step) => step.id);
-      if (apiIds.every(isDeploymentStepId)) return apiIds;
+      return steps.map((step) => step.id);
     }
   }
   throw new Error(`Invalid job definition: ${jobDefinitionId}`);
@@ -124,7 +115,7 @@ export class OrchestratorStore {
     return {
       id: row.id,
       name: row.name,
-      apiIds: definitionApiIds(row.definition, row.id),
+      stepIds: definitionStepIds(row.definition, row.id),
       createdAt: row.createdAt,
       updatedAt: row.updatedAt,
     };

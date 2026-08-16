@@ -36,6 +36,11 @@ test("loads deployment case labels and order from case files", async () => {
         index: 4,
         description: "Job gagal, retry, lalu rollback",
       },
+      {
+        filename: "05.parallel-acl-rules.json",
+        index: 5,
+        description: "Lima ACL rule berjalan paralel",
+      },
     ],
   );
 });

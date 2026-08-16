@@ -1,4 +1,4 @@
-import type { DeploymentStepSpec, JsonObject } from "../../types.js";
+import type { JsonObject } from "../../types.js";
 import type { FakeCloudStackClient } from "../client.js";
 import { asObject, requiredArray } from "../client.js";
 import type { ApiControlQuery, ApiOperationSpec } from "./shared.js";
@@ -7,12 +7,6 @@ export const listPublicIpAddressesApi = {
   command: "listPublicIpAddresses",
   resultKey: "publicipaddress",
 } as const satisfies ApiOperationSpec;
-
-export const listPublicIpAddressesStep = {
-  id: "public-ip",
-  handler: "list_public_ip",
-  dependsOn: [],
-} as const satisfies DeploymentStepSpec;
 
 export type ListPublicIpAddressesQuery = ApiControlQuery;
 

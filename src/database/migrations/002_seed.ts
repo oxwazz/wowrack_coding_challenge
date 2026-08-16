@@ -4,11 +4,11 @@ import type { Database } from "../types.js";
 const withPublicIpId = "deploy-vm-with-public-ip";
 const withoutPublicIpId = "deploy-vm-without-public-ip";
 
-// The database selects deployment steps; handlers and dependencies live in source metadata.
-const baseApiIds = ["vpc", "subnet", "acl-list", "acl-rule", "attach-acl", "vm"];
+// The database selects logical steps; dependencies and behavior live in the combined registry.
+const baseStepIds = ["vpc", "subnet", "acl-list", "acl-rule", "attach-acl", "vm"];
 
 // Public-IP deployment appends NAT-specific work without duplicating the base DAG.
-const publicIpApiIds = ["public-ip", "static-nat"];
+const publicIpStepIds = ["public-ip", "static-nat"];
 
 /** Seeds the built-in VM deployment job definitions without replacing existing records. */
 export async function up(db: Kysely<Database>): Promise<void> {
@@ -17,14 +17,14 @@ export async function up(db: Kysely<Database>): Promise<void> {
     {
       id: withPublicIpId,
       name: "Deploy VM dengan Public IP",
-      definition: JSON.stringify([...baseApiIds, ...publicIpApiIds]),
+      definition: JSON.stringify([...baseStepIds, ...publicIpStepIds]),
       createdAt: timestamp,
       updatedAt: timestamp,
     },
     {
       id: withoutPublicIpId,
       name: "Deploy VM tanpa Public IP",
-      definition: JSON.stringify(baseApiIds),
+      definition: JSON.stringify(baseStepIds),
       createdAt: timestamp,
       updatedAt: timestamp,
     },

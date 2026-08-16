@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import { OrchestratorStore } from "../database/store.js";
 import type {
   DeploymentOrchestratorConfig,
+  DeploymentStepRegistry,
   JobCaseDefinition,
   JobDefinition,
   JobRunRecord,
@@ -16,11 +17,17 @@ export class DeploymentOrchestrator {
   readonly store: OrchestratorStore;
   private readonly scheduler: Scheduler;
   private readonly maxRetries: number;
+  private readonly deploymentSteps: DeploymentStepRegistry | undefined;
 
   constructor(config: DeploymentOrchestratorConfig) {
+    const handlers = config.deploymentSteps ?? config.handlers;
+    if (handlers === undefined) {
+      throw new Error("DeploymentOrchestrator requires handlers or deploymentSteps");
+    }
     this.store = new OrchestratorStore(config.databasePath);
     this.maxRetries = config.maxRetries ?? 0;
-    const executor = new JobExecutor(this.store, config.handlers, config.jobTimeoutMs ?? 30_000);
+    this.deploymentSteps = config.deploymentSteps;
+    const executor = new JobExecutor(this.store, handlers, config.jobTimeoutMs ?? 30_000);
     this.scheduler = new Scheduler(this.store, executor);
   }
 
@@ -39,10 +46,13 @@ export class DeploymentOrchestrator {
     deploymentCase: JobCaseDefinition,
     jobRunId: string = randomUUID(),
   ): Promise<string> {
+    if (this.deploymentSteps === undefined) {
+      throw new Error("createJobRunFromCase requires deploymentSteps");
+    }
     const definition = await this.store.getJobDefinition(deploymentCase.jobId);
     await this.store.createJobRun(
       jobRunId,
-      resolveJobCase(definition, deploymentCase)
+      resolveJobCase(definition, deploymentCase, this.deploymentSteps)
         .map((job) => ({ ...job, maxRetries: job.maxRetries ?? this.maxRetries })),
       definition.id,
     );

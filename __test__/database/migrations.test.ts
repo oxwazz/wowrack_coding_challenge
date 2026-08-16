@@ -4,7 +4,10 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
 import { sql } from "kysely";
-import { rollbackLastMigration } from "../../src/database/migrations.js";
+import {
+  migrateToLatest,
+  rollbackLastMigration,
+} from "../../src/database/migrations.js";
 import { OrchestratorStore } from "../../src/database/store.js";
 
 test("runs ordered Kysely schema and reference-data migrations", async () => {
@@ -18,6 +21,7 @@ test("runs ordered Kysely schema and reference-data migrations", async () => {
       "001_init_db",
       "002_seed",
       "003_api_id_definitions",
+      "004_logical_step_types",
     ]);
 
     const tables = (await store.database.introspection.getTables())
@@ -58,11 +62,11 @@ test("runs ordered Kysely schema and reference-data migrations", async () => {
     );
     const withPublicIp = await store.getJobDefinition("deploy-vm-with-public-ip");
     const withoutPublicIp = await store.getJobDefinition("deploy-vm-without-public-ip");
-    assert.deepEqual(withPublicIp.apiIds, [
+    assert.deepEqual(withPublicIp.stepIds, [
       "vpc", "subnet", "acl-list", "acl-rule", "attach-acl", "vm",
       "public-ip", "static-nat",
     ]);
-    assert.deepEqual(withoutPublicIp.apiIds, [
+    assert.deepEqual(withoutPublicIp.stepIds, [
       "vpc", "subnet", "acl-list", "acl-rule", "attach-acl", "vm",
     ]);
     await assert.rejects(() => store.getJobDefinition("deploy-vm"));
@@ -90,12 +94,33 @@ test("runs only pending migrations on the next startup", async () => {
       const migrations = await sql<{ count: number }>`
         SELECT COUNT(*) AS count FROM kysely_migration
       `.execute(second.database);
-      assert.equal(migrations.rows[0]?.count, 3);
+      assert.equal(migrations.rows[0]?.count, 4);
     } finally {
       await second.close();
     }
   } finally {
     removeDatabase(databasePath);
+  }
+});
+
+test("migrates persisted deployment snapshots to logical step types", async () => {
+  const store = new OrchestratorStore(":memory:");
+  try {
+    await store.ready;
+    await rollbackLastMigration(store.database);
+    await store.createJobRun(
+      "legacy-types",
+      [{ id: "vpc", type: "create_vpc", dependsOn: [] }],
+      "deploy-vm-without-public-ip",
+    );
+
+    await migrateToLatest(store.database);
+    assert.equal((await store.getJobDefinitions("legacy-types"))[0]?.type, "vpc");
+
+    await rollbackLastMigration(store.database);
+    assert.equal((await store.getJobDefinitions("legacy-types"))[0]?.type, "create_vpc");
+  } finally {
+    await store.close();
   }
 });
 
@@ -113,7 +138,10 @@ test("rolls schema and reference data back one migration at a time", async () =>
     }).execute();
 
     await rollbackLastMigration(store.database);
-    assert.equal((await store.getJobDefinition("deploy-vm-with-public-ip")).apiIds.length, 8);
+    assert.equal((await store.getJobDefinition("deploy-vm-with-public-ip")).stepIds.length, 8);
+
+    await rollbackLastMigration(store.database);
+    assert.equal((await store.getJobDefinition("deploy-vm-with-public-ip")).stepIds.length, 8);
 
     await rollbackLastMigration(store.database);
     await assert.rejects(() => store.getJobDefinition("deploy-vm-with-public-ip"));

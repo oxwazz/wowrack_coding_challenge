@@ -1,4 +1,4 @@
-import type { DeploymentStepSpec, JsonObject } from "../../types.js";
+import type { JsonObject } from "../../types.js";
 import type { FakeCloudStackClient } from "../client.js";
 import type { ApiControlQuery, ApiOperationSpec } from "./shared.js";
 import { runAsyncObject } from "./shared.js";
@@ -7,12 +7,6 @@ export const createVpcApi = {
   command: "createVpc",
   resultKey: "vpc",
 } as const satisfies ApiOperationSpec;
-
-export const createVpcStep = {
-  id: "vpc",
-  handler: "create_vpc",
-  dependsOn: [],
-} as const satisfies DeploymentStepSpec;
 
 export type CreateVpcQuery = ApiControlQuery & Readonly<{
   cidr: string;

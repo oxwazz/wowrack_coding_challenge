@@ -1,16 +1,10 @@
-import type { DeploymentStepSpec, JsonObject } from "../../types.js";
+import type { JsonObject } from "../../types.js";
 import type { FakeCloudStackClient } from "../client.js";
 import type { ApiControlQuery, ApiOperationSpec } from "./shared.js";
 
 export const enableStaticNatApi = {
   command: "enableStaticNat",
 } as const satisfies ApiOperationSpec;
-
-export const enableStaticNatStep = {
-  id: "static-nat",
-  handler: "enable_static_nat",
-  dependsOn: ["vm", "public-ip"],
-} as const satisfies DeploymentStepSpec;
 
 export type EnableStaticNatQuery = ApiControlQuery & Readonly<{
   networkid: string;

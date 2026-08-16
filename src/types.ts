@@ -3,7 +3,6 @@ import type {
   JOB_STATUSES,
 } from "./constants.js";
 import type { DeploymentOrchestrator } from "./core/deployment-orchestrator.js";
-import type { DeploymentStepId } from "./requests/api/deployment-steps.js";
 
 export type JsonPrimitive = string | number | boolean | null;
 export type JsonValue = JsonPrimitive | JsonValue[] | { [key: string]: JsonValue };
@@ -25,24 +24,17 @@ export interface JobDefinition {
 
 export interface JobStepDefinition {
   id: string;
-  /** Key used to resolve run/rollback functions from the handler registry. */
-  handler: string;
+  /** Logical step key used to resolve its run/rollback implementation. */
+  type: string;
   dependsOn: string[];
-}
-
-/** Static orchestration metadata used to build the deployment DAG. */
-export interface DeploymentStepSpec {
-  id: string;
-  /** Key used to resolve run/rollback functions from the handler registry. */
-  handler: string;
-  dependsOn: readonly string[];
+  execution: DeploymentStepExecution;
 }
 
 export interface StoredJobDefinition {
   id: string;
   name: string;
-  /** Deployment step IDs selected for this template. */
-  apiIds: DeploymentStepId[];
+  /** Logical deployment step IDs selected for this template. */
+  stepIds: string[];
 }
 
 export interface JobDefinitionRecord extends StoredJobDefinition {
@@ -62,12 +54,17 @@ export interface JobCaseConfig {
   maxRetries?: number;
 }
 
-export interface JobCaseStep {
+export interface JobCaseStepInstance {
   input?: JsonValue;
   apiControl?: JsonObject;
   config?: JobCaseConfig;
   /** @deprecated Use `config.maxRetries` in deployment case files. */
   maxRetries?: number;
+}
+
+export interface JobCaseStep extends JobCaseStepInstance {
+  /** Named runtime instances expanded from one logical fan-out step. */
+  instances?: Record<string, JobCaseStepInstance>;
 }
 
 export interface JobCaseDefinition {
@@ -143,6 +140,16 @@ export interface JobHandler {
 
 export type HandlerRegistry = Readonly<Record<string, JobHandler>>;
 
+export type DeploymentStepExecution = "single" | "fan-out-leaf";
+
+/** One logical deployment step, including both DAG metadata and executable behavior. */
+export interface DeploymentStep extends JobHandler {
+  dependsOn: readonly string[];
+  execution: DeploymentStepExecution;
+}
+
+export type DeploymentStepRegistry = Readonly<Record<string, DeploymentStep>>;
+
 export interface OrchestratorOptions {
   /** One global safety timeout for every run or rollback attempt. */
   jobTimeoutMs?: number;
@@ -150,10 +157,22 @@ export interface OrchestratorOptions {
   maxRetries?: number;
 }
 
-export interface DeploymentOrchestratorConfig extends OrchestratorOptions {
+type DeploymentOrchestratorBaseConfig = OrchestratorOptions & {
   databasePath: string;
-  handlers: HandlerRegistry;
-}
+};
+
+export type DeploymentOrchestratorConfig = DeploymentOrchestratorBaseConfig & (
+  | {
+    /** Generic handlers used with fully resolved programmatic job definitions. */
+    handlers: HandlerRegistry;
+    deploymentSteps?: never;
+  }
+  | {
+    /** Combined metadata and handlers used to resolve persisted deployment templates. */
+    deploymentSteps: DeploymentStepRegistry;
+    handlers?: never;
+  }
+);
 
 export interface JobRunResult {
   jobRun: JobRunRecord;

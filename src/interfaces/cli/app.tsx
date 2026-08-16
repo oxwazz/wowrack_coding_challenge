@@ -6,7 +6,7 @@ import { fileURLToPath } from "node:url";
 import { Box, render, Text, useApp, useInput } from "ink";
 import { useCallback, useEffect, useState } from "react";
 import { FakeCloudStackClient } from "../../requests/client.js";
-import { createCloudStackHandlers } from "../../requests/handlers.js";
+import { createDeploymentSteps } from "../../requests/deployment-steps.js";
 import { CLI_DEFAULTS, cloudStackApiUrl } from "../../constants.js";
 import { errorMessage } from "../../utils.js";
 import { DeploymentOrchestrator } from "../../core/deployment-orchestrator.js";
@@ -124,7 +124,7 @@ export async function main(): Promise<void> {
   });
   const orchestrator = new DeploymentOrchestrator({
     databasePath,
-    handlers: createCloudStackHandlers(client),
+    deploymentSteps: createDeploymentSteps(client),
     jobTimeoutMs: CLI_DEFAULTS.jobTimeoutMs,
     maxRetries: CLI_DEFAULTS.maxRetries,
   });

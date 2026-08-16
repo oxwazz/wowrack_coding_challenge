@@ -1,4 +1,4 @@
-import type { DeploymentStepSpec, JsonObject } from "../../types.js";
+import type { JsonObject } from "../../types.js";
 import type { FakeCloudStackClient } from "../client.js";
 import { requiredObject } from "../client.js";
 import type { ApiControlQuery, ApiOperationSpec } from "./shared.js";
@@ -7,12 +7,6 @@ export const createNetworkApi = {
   command: "createNetwork",
   resultKey: "network",
 } as const satisfies ApiOperationSpec;
-
-export const createNetworkStep = {
-  id: "subnet",
-  handler: "create_subnet",
-  dependsOn: ["vpc"],
-} as const satisfies DeploymentStepSpec;
 
 export type CreateNetworkQuery = ApiControlQuery & Readonly<{
   vpcid: string;

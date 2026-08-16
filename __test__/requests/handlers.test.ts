@@ -9,7 +9,7 @@ import {
   loadCloudDeploymentCase,
 } from "../../src/interfaces/cli/app.js";
 import { FakeCloudStackClient } from "../../src/requests/client.js";
-import { createCloudStackHandlers } from "../../src/requests/handlers.js";
+import { createDeploymentSteps } from "../../src/requests/deployment-steps.js";
 import type { JsonValue } from "../../src/types.js";
 
 interface FakeApi {
@@ -19,6 +19,9 @@ interface FakeApi {
 }
 
 const casesDirectory = join(process.cwd(), "src", "interfaces", "cli", "cases");
+const definitionSteps = createDeploymentSteps(new FakeCloudStackClient({
+  baseUrl: "https://definition.test/api",
+}));
 
 test("resolves separate stored DAGs with and without public IP", async () => {
   const withoutPublicIpCase = await loadCloudDeploymentCase(
@@ -27,6 +30,7 @@ test("resolves separate stored DAGs with and without public IP", async () => {
   const withoutPublicIp = resolveJobCase(
     await loadDeployVmDefinition(withoutPublicIpCase.jobId),
     withoutPublicIpCase,
+    definitionSteps,
   );
   assert.deepEqual(
     withoutPublicIp.map((job) => [job.id, job.dependsOn]),
@@ -46,10 +50,11 @@ test("resolves separate stored DAGs with and without public IP", async () => {
   const withPublicIp = resolveJobCase(
     await loadDeployVmDefinition(withPublicIpCase.jobId),
     withPublicIpCase,
+    definitionSteps,
   );
   assert.deepEqual(withPublicIp.at(-2), {
     id: "public-ip",
-    type: "list_public_ip",
+    type: "public-ip",
     dependsOn: [],
     input: {},
     apiControl: { delay: 0, timeout: 0, result: 1 },
@@ -58,8 +63,11 @@ test("resolves separate stored DAGs with and without public IP", async () => {
   assert.deepEqual(withPublicIp.at(-1)?.dependsOn, ["vm", "public-ip"]);
 });
 
-test("loads the four focused deployment cases", async () => {
+test("loads the five focused deployment cases", async () => {
   const failedCase = await loadCloudDeploymentCase(join(casesDirectory, "04.failed-job.json"));
+  const parallelAclCase = await loadCloudDeploymentCase(
+    join(casesDirectory, "05.parallel-acl-rules.json"),
+  );
   assert.equal(failedCase.jobId, "deploy-vm-without-public-ip");
   assert.equal(failedCase.defaults?.config?.maxRetries, 1);
   assert.deepEqual(failedCase.steps["acl-rule"]?.input, {
@@ -82,10 +90,26 @@ test("loads the four focused deployment cases", async () => {
   assert.deepEqual(failedCase.defaults?.apiControl, {
     delay: 0, timeout: 0, result: 1,
   });
+  assert.deepEqual(
+    Object.keys(parallelAclCase.steps["acl-rule"]?.instances ?? {}),
+    ["ssh", "http", "https", "dns", "icmp"],
+  );
 
   assert.equal(
-    resolveJobCase(await loadDeployVmDefinition(failedCase.jobId), failedCase).length,
+    resolveJobCase(
+      await loadDeployVmDefinition(failedCase.jobId),
+      failedCase,
+      definitionSteps,
+    ).length,
     6,
+  );
+  assert.equal(
+    resolveJobCase(
+      await loadDeployVmDefinition(parallelAclCase.jobId),
+      parallelAclCase,
+      definitionSteps,
+    ).length,
+    10,
   );
 
   assert.deepEqual(
@@ -112,6 +136,11 @@ test("loads the four focused deployment cases", async () => {
         index: 4,
         description: "Job gagal, retry, lalu rollback",
       },
+      {
+        filename: "05.parallel-acl-rules.json",
+        index: 5,
+        description: "Lima ACL rule berjalan paralel",
+      },
     ],
   );
 });
@@ -123,6 +152,7 @@ test("loads a case where the ACL branch finishes before the subnet", async () =>
   const jobs = resolveJobCase(
     await loadDeployVmDefinition(deploymentCase.jobId),
     deploymentCase,
+    definitionSteps,
   );
 
   assert.deepEqual(jobs.find((job) => job.id === "subnet")?.input, {
@@ -158,7 +188,7 @@ test("advances ACL list and rule while the slow subnet is still running", async 
   const client = new FakeCloudStackClient({ baseUrl: api.baseUrl });
   const orchestrator = new DeploymentOrchestrator({
     databasePath: ":memory:",
-    handlers: createCloudStackHandlers(client),
+    deploymentSteps: createDeploymentSteps(client),
   });
 
   try {
@@ -221,12 +251,72 @@ test("advances ACL list and rule while the slow subnet is still running", async 
   }
 });
 
+test("expands one stored ACL step into independently tracked case instances", async () => {
+  const api = await startFakeApi();
+  const client = new FakeCloudStackClient({ baseUrl: api.baseUrl });
+  const orchestrator = new DeploymentOrchestrator({
+    databasePath: ":memory:",
+    deploymentSteps: createDeploymentSteps(client),
+  });
+
+  try {
+    const deploymentCase = await loadCloudDeploymentCase(
+      join(casesDirectory, "05.parallel-acl-rules.json"),
+    );
+    if (deploymentCase.defaults?.config !== undefined) {
+      deploymentCase.defaults.config.maxRetries = 0;
+    }
+
+    const jobRunId = await orchestrator.createJobRunFromCase(deploymentCase);
+    assert.deepEqual(
+      (await orchestrator.store.getJobDefinitions(jobRunId))
+        .filter(({ type }) => type === "acl-rule")
+        .map(({ id }) => id),
+      [
+        "acl-rule:ssh",
+        "acl-rule:http",
+        "acl-rule:https",
+        "acl-rule:dns",
+        "acl-rule:icmp",
+      ],
+    );
+
+    const result = await orchestrator.runJobRun(jobRunId);
+    assert.equal(result.jobRun.status, "SUCCESS");
+    assert.deepEqual(
+      result.jobs
+        .filter(({ type }) => type === "acl-rule")
+        .map(({ jobId, status }) => ({ jobId, status })),
+      [
+        { jobId: "acl-rule:ssh", status: "SUCCESS" },
+        { jobId: "acl-rule:http", status: "SUCCESS" },
+        { jobId: "acl-rule:https", status: "SUCCESS" },
+        { jobId: "acl-rule:dns", status: "SUCCESS" },
+        { jobId: "acl-rule:icmp", status: "SUCCESS" },
+      ],
+    );
+    assert.equal(
+      api.requests.filter((url) => url.searchParams.get("command") === "createNetworkACL")
+        .length,
+      5,
+    );
+    assert.deepEqual(
+      (await orchestrator.store.getJobDefinition(deploymentCase.jobId)).stepIds
+        .filter((stepId) => stepId === "acl-rule"),
+      ["acl-rule"],
+    );
+  } finally {
+    await orchestrator.close();
+    await api.close();
+  }
+});
+
 test("executes every API command required for a deployment with public IP", async () => {
   const api = await startFakeApi();
   const client = new FakeCloudStackClient({ baseUrl: api.baseUrl });
   const orchestrator = new DeploymentOrchestrator({
     databasePath: ":memory:",
-    handlers: createCloudStackHandlers(client),
+    deploymentSteps: createDeploymentSteps(client),
   });
 
   try {
@@ -241,7 +331,7 @@ test("executes every API command required for a deployment with public IP", asyn
     assert.equal(result.jobRun.jobDefinitionId, "deploy-vm-with-public-ip");
     assert(result.jobs.every((job) => job.status === "SUCCESS"));
     assert.equal(
-      (await orchestrator.store.getJobDefinition("deploy-vm-with-public-ip")).apiIds.length,
+      (await orchestrator.store.getJobDefinition("deploy-vm-with-public-ip")).stepIds.length,
       8,
     );
 
@@ -287,7 +377,7 @@ test("turns jobstatus=2 into failure and calls documented rollback APIs", async 
   const client = new FakeCloudStackClient({ baseUrl: api.baseUrl });
   const orchestrator = new DeploymentOrchestrator({
     databasePath: ":memory:",
-    handlers: createCloudStackHandlers(client),
+    deploymentSteps: createDeploymentSteps(client),
   });
 
   try {

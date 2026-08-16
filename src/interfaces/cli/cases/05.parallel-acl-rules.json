@@ -1,0 +1,96 @@
+{
+  "description": "Lima ACL rule berjalan paralel",
+  "jobId": "deploy-vm-without-public-ip",
+  "defaults": {
+    "apiControl": {
+      "delay": 0,
+      "timeout": 0,
+      "result": 1
+    },
+    "config": {
+      "maxRetries": 1
+    }
+  },
+  "steps": {
+    "vpc": {
+      "input": {
+        "cidr": "10.20.0.0/16",
+        "name": "wowdev-vpc"
+      }
+    },
+    "subnet": {
+      "input": {
+        "name": "wowdev-subnet",
+        "gateway": "10.20.1.1",
+        "netmask": "255.255.255.0"
+      }
+    },
+    "acl-list": {
+      "input": {
+        "name": "wowdev-acl"
+      }
+    },
+    "acl-rule": {
+      "instances": {
+        "ssh": {
+          "input": {
+            "protocol": "tcp",
+            "cidrList": "10.20.1.0/24",
+            "action": "allow",
+            "trafficType": "Ingress",
+            "startPort": 22,
+            "endPort": 22
+          }
+        },
+        "http": {
+          "input": {
+            "protocol": "tcp",
+            "cidrList": "0.0.0.0/0",
+            "action": "allow",
+            "trafficType": "Ingress",
+            "startPort": 80,
+            "endPort": 80
+          }
+        },
+        "https": {
+          "input": {
+            "protocol": "tcp",
+            "cidrList": "0.0.0.0/0",
+            "action": "allow",
+            "trafficType": "Ingress",
+            "startPort": 443,
+            "endPort": 443
+          }
+        },
+        "dns": {
+          "input": {
+            "protocol": "udp",
+            "cidrList": "10.20.1.0/24",
+            "action": "allow",
+            "trafficType": "Egress",
+            "startPort": 53,
+            "endPort": 53
+          }
+        },
+        "icmp": {
+          "input": {
+            "protocol": "icmp",
+            "cidrList": "10.20.1.0/24",
+            "action": "allow",
+            "trafficType": "Ingress"
+          }
+        }
+      }
+    },
+    "attach-acl": {
+      "input": {}
+    },
+    "vm": {
+      "input": {
+        "name": "wowdev-vm",
+        "serviceOfferingId": "offering-1",
+        "templateId": "template-1"
+      }
+    }
+  }
+}

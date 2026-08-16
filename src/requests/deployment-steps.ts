@@ -1,6 +1,6 @@
 import type {
   ApiParameters,
-  HandlerRegistry,
+  DeploymentStepRegistry,
   JobRollbackContext,
   JobRunContext,
   JsonObject,
@@ -10,52 +10,42 @@ import {
   FakeCloudStackClient,
   requiredString,
 } from "./client.js";
-import {
-  createNetworkAclList,
-  createNetworkAclListStep,
-} from "./api/create-network-acl-list.js";
-import { createNetworkAcl, createNetworkAclStep } from "./api/create-network-acl.js";
-import { createNetwork, createNetworkStep } from "./api/create-network.js";
-import { createVpc, createVpcStep } from "./api/create-vpc.js";
+import { createNetworkAclList } from "./api/create-network-acl-list.js";
+import { createNetworkAcl } from "./api/create-network-acl.js";
+import { createNetwork } from "./api/create-network.js";
+import { createVpc } from "./api/create-vpc.js";
 import { deleteNetwork } from "./api/delete-network.js";
 import { deleteVpc } from "./api/delete-vpc.js";
-import {
-  deployVirtualMachine,
-  deployVirtualMachineStep,
-} from "./api/deploy-virtual-machine.js";
+import { deployVirtualMachine } from "./api/deploy-virtual-machine.js";
 import { destroyVirtualMachine } from "./api/destroy-virtual-machine.js";
-import { enableStaticNat, enableStaticNatStep } from "./api/enable-static-nat.js";
-import {
-  listPublicIpAddresses,
-  listPublicIpAddressesStep,
-} from "./api/list-public-ip-addresses.js";
-import {
-  replaceNetworkAclList,
-  replaceNetworkAclListStep,
-} from "./api/replace-network-acl-list.js";
+import { enableStaticNat } from "./api/enable-static-nat.js";
+import { listPublicIpAddresses } from "./api/list-public-ip-addresses.js";
+import { replaceNetworkAclList } from "./api/replace-network-acl-list.js";
 
 /**
- * Builds the handler registry that maps deployment step types to CloudStack operations.
- * Each handler reads persisted input and dependency results, then validates the API response.
+ * Builds the deployment registry containing DAG metadata and CloudStack behavior.
+ * Each step reads persisted input and dependency results, then validates the API response.
  *
  * @param client - CloudStack client used by every run and rollback handler.
- * @returns A registry suitable for `DeploymentOrchestratorConfig.handlers`.
+ * @returns A registry suitable for `DeploymentOrchestratorConfig.deploymentSteps`.
  *
  * @example
  * ```ts
  * const client = new FakeCloudStackClient({ baseUrl: "http://localhost:8080/client/api" });
- * const handlers = createCloudStackHandlers(client);
+ * const deploymentSteps = createDeploymentSteps(client);
  * const orchestrator = new DeploymentOrchestrator({
  *   databasePath: "deployments.sqlite",
- *   handlers,
+ *   deploymentSteps,
  * });
  * ```
  */
-export function createCloudStackHandlers(
+export function createDeploymentSteps(
   client: FakeCloudStackClient,
-): HandlerRegistry {
+) {
   return {
-    [createVpcStep.handler]: {
+    vpc: {
+      dependsOn: [],
+      execution: "single",
       /** Creates a VPC and returns the object produced by the asynchronous API job. */
       async run(context) {
         const input = inputObject(context);
@@ -80,7 +70,9 @@ export function createCloudStackHandlers(
       },
     },
 
-    [createNetworkStep.handler]: {
+    subnet: {
+      dependsOn: ["vpc"],
+      execution: "single",
       /** Creates a network inside the VPC produced by the dependency step. */
       async run(context) {
         const input = inputObject(context);
@@ -108,7 +100,9 @@ export function createCloudStackHandlers(
       },
     },
 
-    [createNetworkAclListStep.handler]: {
+    "acl-list": {
+      dependsOn: ["vpc"],
+      execution: "single",
       /** Creates a network ACL list for the dependency VPC. */
       async run(context) {
         const input = inputObject(context);
@@ -125,7 +119,9 @@ export function createCloudStackHandlers(
       },
     },
 
-    [createNetworkAclStep.handler]: {
+    "acl-rule": {
+      dependsOn: ["acl-list"],
+      execution: "fan-out-leaf",
       /** Creates an ACL rule in the list produced by the dependency step. */
       async run(context) {
         const input = inputObject(context);
@@ -147,7 +143,9 @@ export function createCloudStackHandlers(
       },
     },
 
-    [replaceNetworkAclListStep.handler]: {
+    "attach-acl": {
+      dependsOn: ["subnet", "acl-list"],
+      execution: "single",
       /** Replaces the subnet's ACL list with the list containing the configured rule. */
       async run(context) {
         const subnet = dependencyObject(context, "subnet");
@@ -163,7 +161,9 @@ export function createCloudStackHandlers(
       },
     },
 
-    [deployVirtualMachineStep.handler]: {
+    vm: {
+      dependsOn: ["subnet"],
+      execution: "single",
       /** Deploys a virtual machine directly on the subnet produced by createNetwork. */
       async run(context) {
         const input = inputObject(context);
@@ -191,7 +191,9 @@ export function createCloudStackHandlers(
       },
     },
 
-    [listPublicIpAddressesStep.handler]: {
+    "public-ip": {
+      dependsOn: [],
+      execution: "single",
       /** Returns the first free public IP address reported by CloudStack. */
       async run(context) {
         const addresses = await listPublicIpAddresses({
@@ -210,7 +212,9 @@ export function createCloudStackHandlers(
       },
     },
 
-    [enableStaticNatStep.handler]: {
+    "static-nat": {
+      dependsOn: ["vm", "public-ip"],
+      execution: "single",
       /** Enables static NAT between the selected public IP and deployed virtual machine. */
       async run(context) {
         const vm = dependencyObject(context, "vm");
@@ -237,8 +241,10 @@ export function createCloudStackHandlers(
         };
       },
     },
-  };
+  } as const satisfies DeploymentStepRegistry;
 }
+
+export type DeploymentStepId = keyof ReturnType<typeof createDeploymentSteps>;
 
 /** Normalizes a job's optional input into a validated JSON object. */
 function inputObject(context: Pick<JobRunContext, "input" | "jobId">): JsonObject {

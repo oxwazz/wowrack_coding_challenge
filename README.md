@@ -44,9 +44,9 @@ src/database/__generated__/deployments.sqlite
 
 Ketika sebuah case dipilih, aplikasi akan:
 
-1. Membaca array ID API dari SQLite.
-2. Membuat DAG dari deployment step dependency di setiap file API.
-3. Menggabungkan DAG dengan input case JSON.
+1. Membaca array logical step ID dari SQLite.
+2. Membuat DAG dari dependency pada combined deployment-step registry.
+3. Menggabungkan DAG dengan input case JSON dan meng-expand named instances.
 4. Membuat satu `job run` dengan ID unik.
 5. Menjalankan job yang dependency-nya sudah berhasil.
 6. Menyimpan setiap perubahan status ke SQLite.
@@ -96,6 +96,7 @@ Case berada di `src/interfaces/cli/cases`.
 | `02.with-public-ip.json` | Deployment VM dengan public IP dan static NAT. |
 | `03.slow-subnet.json` | Subnet lambat, tetapi cabang ACL tetap berjalan. |
 | `04.failed-job.json` | ACL rule gagal, di-retry, lalu deployment di-rollback. |
+| `05.parallel-acl-rules.json` | Lima ACL rule di-expand dari satu logical step dan berjalan paralel. |
 
 Nilai yang sama untuk semua step dapat diletakkan di `defaults`. `apiControl` dan `config`
 pada sebuah step akan meng-override bagian yang diperlukan:
@@ -123,6 +124,26 @@ Pada contoh tersebut, `acl-rule` tetap mewarisi `delay` dan `timeout`, tetapi me
 - `timeout`: batas tunggu simulasi.
 - `result: 1`: request berhasil.
 - `result: 2`: request gagal.
+
+Step `acl-rule` juga mendukung named instances. Template database tetap memiliki satu
+logical ID `acl-rule`, sedangkan resolver membuat runtime job terpisah untuk setiap instance:
+
+```json
+{
+  "steps": {
+    "acl-rule": {
+      "instances": {
+        "ssh": { "input": { "protocol": "tcp", "startPort": 22, "endPort": 22 } },
+        "http": { "input": { "protocol": "tcp", "startPort": 80, "endPort": 80 } }
+      }
+    }
+  }
+}
+```
+
+Contoh tersebut menghasilkan runtime ID `acl-rule:ssh` dan `acl-rule:http`. Keduanya memakai
+type `acl-rule`, berjalan paralel setelah `acl-list`, serta memiliki status dan retry sendiri.
+Fan-out dibatasi sebagai leaf: step lain tidak boleh bergantung pada logical step tersebut.
 
 ## Retry dan rollback
 
@@ -152,24 +173,23 @@ Setiap attempt memiliki timeout global, dengan nilai default 30 detik. Timeout m
 Folder `src/requests` berisi:
 
 - `client.ts`: mengirim HTTP request dan melakukan polling asynchronous job.
-- `handlers.ts`: mengubah job menjadi request CloudStack beserta rollback-nya.
-- `api/*.ts`: satu command per file beserta metadata operasi, query, props, result, dan metadata deployment step bila dapat dijadwalkan.
+- `deployment-steps.ts`: registry gabungan dependency, mode eksekusi, `run`, dan `rollback`.
+- `api/*.ts`: satu command per file beserta metadata operasi, query, props, dan result.
 - `api/commands.ts`: metadata command yang disusun dari constant milik setiap file API.
-- `api/deployment-steps.ts`: registry seluruh step yang dapat menjadi node deployment.
 
 Request utama yang digunakan antara lain `createVpc`, `createNetwork`, `createNetworkACLList`,
 `deployVirtualMachine`, `destroyVirtualMachine`, dan `enableStaticNat`.
 
-Metadata operasi API (`command` dan opsional `resultKey`) dipisahkan dari metadata deployment
-step (`id`, `handler`, dan `dependsOn`). Kolom `jobs.definition`
-tidak menyimpan ulang metadata tersebut; nilainya hanya array ID seperti berikut:
+Metadata operasi API (`command` dan opsional `resultKey`) tetap berada di file API. Metadata DAG
+dan implementasi step digabung dalam registry dengan logical step ID sebagai key. Kolom
+`jobs.definition` hanya menyimpan array logical step ID seperti berikut:
 
 ```json
 ["vpc", "subnet", "acl-list", "acl-rule", "attach-acl", "vm"]
 ```
 
-`buildApiJobGraph` mengambil deployment step untuk setiap ID, memvalidasi dependency, lalu menghasilkan
-urutan topologis yang digunakan scheduler.
+`buildApiJobGraph` mengambil deployment step untuk setiap ID dari registry, memvalidasi dependency,
+larangan dependent pada fan-out leaf, dan cycle, lalu menghasilkan urutan topologis untuk scheduler.
 
 ## Penyimpanan data
 
@@ -177,7 +197,7 @@ SQLite memiliki tiga tabel utama:
 
 | Tabel | Isi |
 |---|---|
-| `jobs` | Template berupa array ID API; DAG dibuat dari spec di source code. |
+| `jobs` | Template berupa array logical step ID; DAG dibuat dari combined registry. |
 | `job_runs` | Satu eksekusi deployment dan snapshot job-nya. |
 | `job_run_logs` | Histori status, attempt, result, dan error setiap job. |
 
@@ -190,7 +210,7 @@ Migrasi dijalankan otomatis ketika aplikasi membuka database.
 ```text
 src/
 ├── core/
-│   ├── api-job-graph.ts      membangun dan memvalidasi DAG dari API spec
+│   ├── api-job-graph.ts      membangun dan memvalidasi DAG dari step registry
 │   ├── job-definition.ts     menggabungkan DAG dan konfigurasi case
 │   ├── job-executor.ts       eksekusi, retry, timeout, dan rollback satu job
 │   ├── scheduler.ts          penjadwalan node DAG
@@ -206,7 +226,7 @@ src/
 └── requests/
     ├── api/                  satu file per command beserta query, props, dan return type
     ├── client.ts             HTTP client bersama
-    └── handlers.ts           komposisi handler CloudStack
+    └── deployment-steps.ts   metadata DAG beserta run/rollback CloudStack
 
 __test__/                    unit dan integration test
 ```

@@ -1,4 +1,4 @@
-import type { DeploymentStepSpec, JsonObject } from "../../types.js";
+import type { JsonObject } from "../../types.js";
 import type { FakeCloudStackClient } from "../client.js";
 import type { ApiControlQuery, ApiOperationSpec } from "./shared.js";
 import { runAsyncObject } from "./shared.js";
@@ -7,12 +7,6 @@ export const createNetworkAclApi = {
   command: "createNetworkACL",
   resultKey: "networkacl",
 } as const satisfies ApiOperationSpec;
-
-export const createNetworkAclStep = {
-  id: "acl-rule",
-  handler: "create_acl_rule",
-  dependsOn: ["acl-list"],
-} as const satisfies DeploymentStepSpec;
 
 export type CreateNetworkAclQuery = ApiControlQuery & Readonly<{
   aclid: string;
