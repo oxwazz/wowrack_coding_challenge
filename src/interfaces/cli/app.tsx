@@ -70,7 +70,7 @@ export async function loadCloudDeploymentCase(
  * Discovers JSON deployment cases and sorts them by numeric filename prefix.
  *
  * @param directory - Directory containing deployment-case JSON files.
- * @returns Menu metadata for each valid case file.
+ * @returns Menu metadata for each JSON file that can be parsed successfully.
  *
  * @example
  * ```ts
@@ -202,7 +202,7 @@ function App({
     }
   }, [casesDirectory, showFailure]);
 
-  /** Starts execution when a deployment case has been loaded successfully. */
+  /** Opens the execution view when a deployment case has been loaded successfully. */
   const start = useCallback(() => {
     if (deploymentCase !== undefined) setScreen("running");
   }, [deploymentCase]);
@@ -578,10 +578,8 @@ function ExitMessage({
 /** Renders current job-step states, attempts, errors, and timing details. */
 function JobTable({
   jobs,
-  freezeRunningElapsed = false,
 }: {
   jobs: JobStepRunRecord[];
-  freezeRunningElapsed?: boolean;
 }) {
   if (jobs.length === 0) return <Text dimColor>Menyiapkan job...</Text>;
   return (
@@ -603,7 +601,7 @@ function JobTable({
               <Text dimColor>
                 {formatJobTiming(
                   job,
-                  freezeRunningElapsed ? Date.parse(job.updatedAt) : Date.now(),
+                  Date.now(),
                 )}
               </Text>
             </Box>
@@ -707,27 +705,6 @@ export function formatElapsedSeconds(elapsedMilliseconds: number): string {
 }
 
 /**
- * Calculates and formats elapsed execution time from persisted timestamps.
- * Running jobs use the supplied reference time; completed jobs use `finishedAt`.
- *
- * @param job - Job timestamps required for the calculation.
- * @param currentTimeMilliseconds - Reference clock used for an unfinished job.
- * @returns A formatted duration, or `-` when timing data is unavailable.
- */
-export function formatJobElapsed(
-  job: Pick<JobStepRunRecord, "startedAt" | "finishedAt">,
-  currentTimeMilliseconds: number = Date.now(),
-): string {
-  if (job.startedAt === null) return "-";
-  const startedAt = Date.parse(job.startedAt);
-  const finishedAt = job.finishedAt === null
-    ? currentTimeMilliseconds
-    : Date.parse(job.finishedAt);
-  if (!Number.isFinite(startedAt) || !Number.isFinite(finishedAt)) return "-";
-  return formatElapsedSeconds(Math.max(0, finishedAt - startedAt));
-}
-
-/**
  * Formats execution and rollback durations for a reconstructed job-step state.
  *
  * @param job - Persisted status and accumulated timing fields.
@@ -784,7 +761,7 @@ function wrapIndex(index: number, length: number): number {
   return length === 0 ? 0 : (index + length) % length;
 }
 
-/** Derives a stable case identifier from its numbered JSON filename. */
+/** Derives a case identifier by removing the numeric prefix and `.json` suffix. */
 function caseIdFromFilename(filename: string): string {
   return basename(filename, ".json").replace(/^\d+[._-]/, "");
 }

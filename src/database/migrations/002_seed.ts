@@ -31,7 +31,7 @@ export async function up(db: Kysely<Database>): Promise<void> {
   ]).onConflict((conflict) => conflict.column("id").doNothing()).execute();
 }
 
-/** Removes the built-in VM deployment job definitions inserted by this migration. */
+/** Removes job definitions that use the built-in VM deployment identifiers. */
 export async function down(db: Kysely<Database>): Promise<void> {
   await db.deleteFrom("jobs")
     .where("id", "in", [withPublicIpId, withoutPublicIpId])

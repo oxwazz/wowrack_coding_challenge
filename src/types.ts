@@ -148,7 +148,7 @@ export interface JobRollbackContext {
 
 export interface JobHandler {
   run: (context: JobRunContext) => Promise<JsonValue>;
-  /** Omit when the documented API does not provide a rollback operation. */
+  /** Omit when the step has no rollback operation; rollback is then recorded as skipped. */
   rollback?: (context: JobRollbackContext) => Promise<void>;
 }
 
@@ -165,7 +165,7 @@ export interface DeploymentStep extends JobHandler {
 export type DeploymentStepRegistry = Readonly<Record<string, DeploymentStep>>;
 
 export interface OrchestratorOptions {
-  /** One global safety timeout for every run or rollback attempt. */
+  /** Fallback timeout in milliseconds when a run, case, or step has no override. */
   jobTimeoutMs?: number;
   /** Default retry count for jobs that do not define their own retry count. */
   maxRetries?: number;

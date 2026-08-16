@@ -14,7 +14,7 @@ const instanceKeyPattern = /^[a-z0-9][a-z0-9-]*$/;
 
 /**
  * Resolves a stored job template into executable steps using case-specific configuration.
- * Case-level retry defaults are used only when a step does not provide its own value.
+ * Step and instance values override case defaults for retry, rollback, timeout, and API controls.
  *
  * @param definition - Persisted template containing only the selected deployment step IDs.
  * @param deploymentCase - Per-deployment inputs and retry overrides.

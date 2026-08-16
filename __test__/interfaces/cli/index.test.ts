@@ -3,7 +3,6 @@ import { join } from "node:path";
 import test from "node:test";
 import {
   formatElapsedSeconds,
-  formatJobElapsed,
   formatJobTiming,
   jobStatusAppearance,
   listCloudDeploymentCases,
@@ -86,18 +85,6 @@ test("formats total case runtime in seconds", () => {
   assert.equal(formatElapsedSeconds(0), "0.00 detik");
   assert.equal(formatElapsedSeconds(1_234), "1.23 detik");
   assert.equal(formatElapsedSeconds(12_345), "12.35 detik");
-});
-
-test("formats elapsed time for pending, running, and finished jobs", () => {
-  assert.equal(formatJobElapsed({ startedAt: null, finishedAt: null }), "-");
-  assert.equal(formatJobElapsed({
-    startedAt: "2026-08-14T12:00:00.000Z",
-    finishedAt: null,
-  }, Date.parse("2026-08-14T12:00:01.234Z")), "1.23 detik");
-  assert.equal(formatJobElapsed({
-    startedAt: "2026-08-14T12:00:00.000Z",
-    finishedAt: "2026-08-14T12:00:06.345Z",
-  }), "6.35 detik");
 });
 
 test("formats active execution and rollback durations separately", () => {

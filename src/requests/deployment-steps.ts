@@ -24,7 +24,7 @@ import { replaceNetworkAclList } from "./api/replace-network-acl-list.js";
 
 /**
  * Builds the deployment registry containing DAG metadata and CloudStack behavior.
- * Each step reads persisted input and dependency results, then validates the API response.
+ * Handlers read the persisted inputs and dependency results they need, then validate responses.
  *
  * @param client - CloudStack client used by every run and rollback handler.
  * @returns A registry suitable for `DeploymentOrchestratorConfig.deploymentSteps`.
@@ -152,7 +152,7 @@ export function createDeploymentSteps(
     "attach-acl": {
       dependsOn: ["subnet", "acl-list"],
       execution: "single",
-      /** Replaces the subnet's ACL list with the list containing the configured rule. */
+      /** Replaces the subnet's ACL list with the ACL list created by its dependency. */
       async run(context) {
         const subnet = dependencyObject(context, "subnet");
         const aclList = dependencyObject(context, "acl-list");
@@ -186,7 +186,7 @@ export function createDeploymentSteps(
           signal: context.signal,
         });
       },
-      /** Destroys the virtual machine before its network and VPC are removed. */
+      /** Destroys the virtual machine created by this step. */
       async rollback(context) {
         const result = resultObject(context);
         await destroyVirtualMachine({
@@ -252,8 +252,6 @@ export function createDeploymentSteps(
     },
   } as const satisfies DeploymentStepRegistry;
 }
-
-export type DeploymentStepId = keyof ReturnType<typeof createDeploymentSteps>;
 
 /** Normalizes a job's optional input into a validated JSON object. */
 function inputObject(context: Pick<JobRunContext, "input" | "jobId">): JsonObject {
