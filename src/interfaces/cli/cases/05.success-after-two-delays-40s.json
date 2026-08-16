@@ -42,7 +42,8 @@
         "endPort": 22
       },
       "apiControl": {
-        "delaySequence": [40, 40, 0, 0, 0]
+        "delaySequence": [40, 40, 0, 0, 0],
+        "resultSequence": [2, 2, 1, 1, 1]
       }
     },
     "attach-acl": {

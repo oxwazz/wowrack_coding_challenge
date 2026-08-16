@@ -1,5 +1,5 @@
 {
-  "description": "Rollback failed - Subnet terus delay sampai retry habis",
+  "description": "Rolled back - Subnet terus delay sampai retry habis",
   "jobId": "deploy-vm-without-public-ip",
   "defaults": {
     "apiControl": {
@@ -28,10 +28,7 @@
       },
       "apiControl": {
         "delaySequence": [40, 40, 40, 40, 40],
-        "result": 2
-      },
-      "config": {
-        "maxTimeout": 1000
+        "resultSequence": [2, 2, 2, 2, 2]
       }
     },
     "acl-list": {

@@ -18,6 +18,9 @@
       "input": {
         "cidr": "10.20.0.0/16",
         "name": "wowdev-vpc"
+      },
+      "apiControl": {
+        "rollbackResultSequence": [2, 1, 1, 1, 1]
       }
     },
     "subnet": {
@@ -25,6 +28,9 @@
         "name": "wowdev-subnet",
         "gateway": "10.20.1.1",
         "netmask": "255.255.255.0"
+      },
+      "apiControl": {
+        "rollbackResultSequence": [2, 1, 1, 1, 1]
       }
     },
     "acl-list": {

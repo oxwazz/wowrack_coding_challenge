@@ -21,7 +21,7 @@
 
       },
       "apiControl": {
-        "rollbackResultSequence": [2, 2, 2, 2, 1]
+        "rollbackResultSequence": [2, 1, 1, 1, 1]
       }
     },
     "subnet": {
@@ -31,7 +31,7 @@
         "netmask": "255.255.255.0"
       },
       "apiControl": {
-        "rollbackResultSequence": [2, 2, 2, 2, 1]
+        "rollbackResultSequence": [2, 1, 1, 1, 1]
       }
     },
     "acl-list": {

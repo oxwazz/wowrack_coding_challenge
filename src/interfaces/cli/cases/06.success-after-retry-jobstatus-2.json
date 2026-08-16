@@ -42,7 +42,7 @@
         "endPort": 22
       },
       "apiControl": {
-        "resultSequence": [2, 1, 1, 1, 1]
+        "resultSequence": [2, 2, 1, 1, 1]
       }
     },
     "attach-acl": {

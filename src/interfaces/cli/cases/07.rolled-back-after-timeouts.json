@@ -1,5 +1,5 @@
 {
-  "description": "Rollback failed - Subnet terus timeout sampai retry habis",
+  "description": "Rolled back - Subnet terus timeout sampai retry habis",
   "jobId": "deploy-vm-without-public-ip",
   "defaults": {
     "apiControl": {
@@ -27,12 +27,8 @@
         "netmask": "255.255.255.0"
       },
       "apiControl": {
-        "timeoutSequence": [2, 2, 2],
-        "result": 2
-      },
-      "config": {
-        "maxTimeout": 1000,
-        "maxRetries": 2
+        "timeoutSequence": [40, 40, 40, 40, 40],
+        "resultSequence": [2, 2, 2, 2, 2]
       }
     },
     "acl-list": {

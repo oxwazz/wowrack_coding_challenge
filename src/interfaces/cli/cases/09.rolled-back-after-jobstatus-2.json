@@ -27,11 +27,8 @@
         "netmask": "255.255.255.0"
       },
       "apiControl": {
-        "timeout": 30000,
+        "timeout": 2,
         "resultSequence": [2, 2, 2, 2, 2]
-      },
-      "config": {
-        "maxTimeout": 1000
       }
     },
     "acl-list": {
