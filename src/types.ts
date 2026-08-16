@@ -49,8 +49,6 @@ export interface JobDefinitionRecord extends StoredJobDefinition {
 export interface JobCaseDefaults {
   apiControl?: JsonObject;
   config?: JobCaseDefaultsConfig;
-  /** @deprecated Use `config.maxRetries`. */
-  maxRetries?: number;
 }
 
 export interface JobCaseDefaultsConfig extends JobCaseConfig {}
@@ -68,8 +66,6 @@ export interface JobCaseStepInstance {
   input?: JsonValue;
   apiControl?: JsonObject;
   config?: JobCaseConfig;
-  /** @deprecated Use `config.maxRetries` in deployment case files. */
-  maxRetries?: number;
 }
 
 export interface JobCaseStep extends JobCaseStepInstance {

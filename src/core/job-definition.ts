@@ -67,11 +67,8 @@ function resolveStep(
   instance?: JobCaseStepInstance,
 ): JobDefinition {
   const maxRetries = instance?.config?.maxRetries
-    ?? instance?.maxRetries
     ?? configured.config?.maxRetries
-    ?? configured.maxRetries
-    ?? deploymentCase.defaults?.config?.maxRetries
-    ?? deploymentCase.defaults?.maxRetries;
+    ?? deploymentCase.defaults?.config?.maxRetries;
   const maxRollbackRetries = instance?.config?.maxRollbackRetries
     ?? configured.config?.maxRollbackRetries
     ?? deploymentCase.defaults?.config?.maxRollbackRetries;
