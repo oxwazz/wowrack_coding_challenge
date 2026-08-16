@@ -28,7 +28,9 @@ CLI bersifat interaktif:
 - `Esc` untuk kembali.
 - `q` untuk keluar.
 
-Menu CLI dapat membuat job run baru dan mereset riwayat database.
+Menu CLI dapat membuat job run baru, memeriksa seluruh job definition, dan mereset
+riwayat database. Pemeriksaan definition menampilkan status `VALID`/`INVALID`, daftar step,
+serta alasan spesifik seperti dependency yang tidak disertakan.
 
 Database persisten berada di:
 
@@ -240,6 +242,13 @@ dan implementasi step digabung dalam registry dengan logical step ID sebagai key
 ```json
 ["vpc", "subnet", "acl-list", "acl-rule", "attach-acl", "vm"]
 ```
+
+Database juga memiliki dua contoh untuk fitur **Check job definition**:
+
+- `["vpc", "acl-list", "acl-rule"]` valid karena seluruh dependency tersedia.
+- `["vpc", "acl-list", "vm"]` sengaja invalid karena `vm` membutuhkan `subnet`.
+- `["vpc-new", "acl-list", "vm-new"]` sengaja invalid karena step baru tersebut belum
+  terdaftar di deployment-step registry.
 
 `buildApiJobGraph` mengambil deployment step untuk setiap ID dari registry, memvalidasi dependency,
 larangan dependent pada fan-out leaf, dan cycle, lalu menghasilkan urutan topologis untuk scheduler.

@@ -5,8 +5,10 @@ import type {
   DeploymentStepRegistry,
   JobCaseDefinition,
   JobDefinition,
+  JobDefinitionRecord,
   JobRunResult,
 } from "../types.js";
+import { buildApiJobGraph } from "./api-job-graph.js";
 import { JobExecutor } from "./job-executor.js";
 import { resolveJobCase } from "./job-definition.js";
 import { Scheduler } from "./scheduler.js";
@@ -70,6 +72,16 @@ export class DeploymentOrchestrator {
       definition.id,
     );
     return jobRunId;
+  }
+
+  /** Validates one persisted definition against the registered deployment-step DAG. */
+  async validateJobDefinition(jobDefinitionId: string): Promise<JobDefinitionRecord> {
+    if (this.deploymentSteps === undefined) {
+      throw new Error("validateJobDefinition requires deploymentSteps");
+    }
+    const definition = await this.store.getJobDefinition(jobDefinitionId);
+    buildApiJobGraph(definition.stepIds, this.deploymentSteps);
+    return definition;
   }
 
   async deployCase(

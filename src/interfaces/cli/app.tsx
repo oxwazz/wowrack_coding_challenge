@@ -32,9 +32,18 @@ export interface CloudDeploymentCaseSummary {
   description: string;
 }
 
+export interface JobDefinitionCheckResult {
+  id: string;
+  name: string;
+  stepIds: string[];
+  valid: boolean;
+  error?: string;
+}
+
 type Screen =
   | "menu"
   | "case"
+  | "definitions"
   | "confirm"
   | "running"
   | "reset"
@@ -107,6 +116,21 @@ export async function runInteractiveCli(options: InteractiveCliOptions): Promise
   );
   const result = await instance.waitUntilExit();
   return isInteractiveExitResult(result) ? result.exitCode : 0;
+}
+
+/** Checks every persisted job definition and preserves the reason for each failure. */
+export async function checkJobDefinitions(
+  orchestrator: DeploymentOrchestrator,
+): Promise<JobDefinitionCheckResult[]> {
+  const definitions = await orchestrator.store.listJobDefinitions();
+  return Promise.all(definitions.map(async (definition) => {
+    try {
+      await orchestrator.validateJobDefinition(definition.id);
+      return { ...definition, valid: true };
+    } catch (error) {
+      return { ...definition, valid: false, error: errorMessage(error) };
+    }
+  }));
 }
 
 /** Configures dependencies, launches the interactive CLI, and closes the database on exit. */
@@ -214,6 +238,7 @@ function App({
       {screen === "menu" && (
         <MainMenu
           onNew={startNewFlow}
+          onCheckDefinitions={() => setScreen("definitions")}
           onReset={() => setScreen("reset")}
           onExit={() => exit({ exitCode: lastExitCode } satisfies InteractiveExitResult)}
         />
@@ -224,6 +249,13 @@ function App({
           cases={cases}
           onSelect={selectCase}
           onBack={() => setScreen("menu")}
+        />
+      )}
+      {screen === "definitions" && (
+        <DefinitionCheck
+          orchestrator={orchestrator}
+          onBack={() => setScreen("menu")}
+          onError={showFailure}
         />
       )}
       {screen === "confirm" && deploymentCase !== undefined && caseSummary !== undefined && (
@@ -283,15 +315,18 @@ function Header() {
 /** Renders and handles keyboard navigation for the top-level CLI menu. */
 function MainMenu({
   onNew,
+  onCheckDefinitions,
   onReset,
   onExit,
 }: {
   onNew: () => void;
+  onCheckDefinitions: () => void;
   onReset: () => void;
   onExit: () => void;
 }) {
   const options = [
     "Mulai job run baru",
+    "Check job definition",
     "Reset database",
     "Keluar",
   ];
@@ -300,7 +335,7 @@ function MainMenu({
     if (key.upArrow) setSelected((value) => wrapIndex(value - 1, options.length));
     if (key.downArrow) setSelected((value) => wrapIndex(value + 1, options.length));
     if (input === "q") onExit();
-    if (key.return) [onNew, onReset, onExit][selected]?.();
+    if (key.return) [onNew, onCheckDefinitions, onReset, onExit][selected]?.();
   });
   return (
     <Panel title="Menu utama">
@@ -308,6 +343,55 @@ function MainMenu({
         <MenuRow key={label} label={label} selected={selected === index} />
       ))}
       <Help>↑/↓ pilih · Enter buka · q keluar</Help>
+    </Panel>
+  );
+}
+
+/** Validates all database-owned definitions and displays any dependency error. */
+function DefinitionCheck({
+  orchestrator,
+  onBack,
+  onError,
+}: {
+  orchestrator: DeploymentOrchestrator;
+  onBack: () => void;
+  onError: (error: unknown) => void;
+}) {
+  const [results, setResults] = useState<JobDefinitionCheckResult[]>();
+  useEffect(() => {
+    let mounted = true;
+    void checkJobDefinitions(orchestrator)
+      .then((value) => {
+        if (mounted) setResults(value);
+      })
+      .catch((error) => {
+        if (mounted) onError(error);
+      });
+    return () => {
+      mounted = false;
+    };
+  }, [onError, orchestrator]);
+  useInput((_input, key) => {
+    if (key.return || key.escape) onBack();
+  });
+
+  return (
+    <Panel title="Check job definition">
+      {results === undefined ? (
+        <Text><Spinner /> Memeriksa definition dari database</Text>
+      ) : results.length === 0 ? (
+        <Text color="yellow">Tidak ada job definition di database.</Text>
+      ) : results.map((result) => (
+        <Box key={result.id} flexDirection="column" marginBottom={1}>
+          <Text bold color={result.valid ? "green" : "red"}>
+            {result.valid ? "✓ VALID" : "✗ INVALID"} · {result.name}
+          </Text>
+          <Text dimColor>ID: {result.id}</Text>
+          <Text dimColor>Steps: {result.stepIds.join(" → ")}</Text>
+          {!result.valid && <Text color="red">Reason: {result.error}</Text>}
+        </Box>
+      ))}
+      <Help>Enter/Esc kembali ke menu</Help>
     </Panel>
   );
 }

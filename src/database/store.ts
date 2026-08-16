@@ -121,6 +121,20 @@ export class OrchestratorStore {
     };
   }
 
+  /** Lists every reusable job definition in deterministic name order. */
+  async listJobDefinitions(): Promise<JobDefinitionRecord[]> {
+    await this.ready;
+    const rows = await this.database.selectFrom("jobs").selectAll()
+      .orderBy("name").orderBy("id").execute();
+    return rows.map((row) => ({
+      id: row.id,
+      name: row.name,
+      stepIds: definitionStepIds(row.definition, row.id),
+      createdAt: row.createdAt,
+      updatedAt: row.updatedAt,
+    }));
+  }
+
   /**
    * Persists a new job run and an initial `PENDING` log for every step atomically.
    *

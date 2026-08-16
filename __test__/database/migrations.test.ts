@@ -17,6 +17,8 @@ test("runs ordered Kysely schema and reference-data migrations", async () => {
     assert.deepEqual(migrations.rows.map(({ name }) => name), [
       "001_init_db",
       "002_seed",
+      "003_add_definition_check_examples",
+      "004_add_unknown_step_definition",
     ]);
 
     const tables = (await store.database.introspection.getTables())
@@ -46,12 +48,24 @@ test("runs ordered Kysely schema and reference-data migrations", async () => {
       await store.database.selectFrom("jobs").select(["id", "name"]).orderBy("id").execute(),
       [
         {
+          id: "deploy-vm-with-missing-subnet",
+          name: "Deploy VM tanpa dependency subnet",
+        },
+        {
           id: "deploy-vm-with-public-ip",
           name: "Deploy VM dengan Public IP",
         },
         {
+          id: "deploy-vm-with-unknown-steps",
+          name: "Deploy VM dengan unknown steps",
+        },
+        {
           id: "deploy-vm-without-public-ip",
           name: "Deploy VM tanpa Public IP",
+        },
+        {
+          id: "deploy-vpc-with-acl-rules",
+          name: "Deploy VPC dengan ACL rules",
         },
       ],
     );
@@ -64,6 +78,18 @@ test("runs ordered Kysely schema and reference-data migrations", async () => {
     assert.deepEqual(withoutPublicIp.stepIds, [
       "vpc", "subnet", "acl-list", "acl-rule", "attach-acl", "vm",
     ]);
+    assert.deepEqual(
+      (await store.getJobDefinition("deploy-vpc-with-acl-rules")).stepIds,
+      ["vpc", "acl-list", "acl-rule"],
+    );
+    assert.deepEqual(
+      (await store.getJobDefinition("deploy-vm-with-missing-subnet")).stepIds,
+      ["vpc", "acl-list", "vm"],
+    );
+    assert.deepEqual(
+      (await store.getJobDefinition("deploy-vm-with-unknown-steps")).stepIds,
+      ["vpc-new", "acl-list", "vm-new"],
+    );
     await assert.rejects(() => store.getJobDefinition("deploy-vm"));
   } finally {
     await store.close();
@@ -89,7 +115,7 @@ test("runs only pending migrations on the next startup", async () => {
       const migrations = await sql<{ count: number }>`
         SELECT COUNT(*) AS count FROM kysely_migration
       `.execute(second.database);
-      assert.equal(migrations.rows[0]?.count, 2);
+      assert.equal(migrations.rows[0]?.count, 4);
     } finally {
       await second.close();
     }
@@ -119,6 +145,8 @@ test("normalizes migration history created before the two-file squash", async ()
       assert.deepEqual(migrations.rows.map(({ name }) => name), [
         "001_init_db",
         "002_seed",
+        "003_add_definition_check_examples",
+        "004_add_unknown_step_definition",
       ]);
       assert.equal(
         (await second.getJobDefinition("deploy-vm-with-public-ip")).stepIds.length,
@@ -171,11 +199,40 @@ test("rolls schema and reference data back one migration at a time", async () =>
     }).execute();
 
     await rollbackLastMigration(store.database);
+    await assert.rejects(() => store.getJobDefinition("deploy-vm-with-unknown-steps"));
+    assert.equal(
+      (await store.getJobDefinition("deploy-vpc-with-acl-rules")).name,
+      "Deploy VPC dengan ACL rules",
+    );
+    assert.equal((await store.getJobDefinition("user-job")).name, "User job");
+
+    let migrations = await sql<{ name: string }>`
+      SELECT name FROM kysely_migration ORDER BY name
+    `.execute(store.database);
+    assert.deepEqual(migrations.rows.map(({ name }) => name), [
+      "001_init_db", "002_seed", "003_add_definition_check_examples",
+    ]);
+
+    await rollbackLastMigration(store.database);
+    await assert.rejects(() => store.getJobDefinition("deploy-vpc-with-acl-rules"));
+    await assert.rejects(() => store.getJobDefinition("deploy-vm-with-missing-subnet"));
+    assert.equal(
+      (await store.getJobDefinition("deploy-vm-with-public-ip")).name,
+      "Deploy VM dengan Public IP",
+    );
+    assert.equal((await store.getJobDefinition("user-job")).name, "User job");
+
+    migrations = await sql<{ name: string }>`
+      SELECT name FROM kysely_migration ORDER BY name
+    `.execute(store.database);
+    assert.deepEqual(migrations.rows.map(({ name }) => name), ["001_init_db", "002_seed"]);
+
+    await rollbackLastMigration(store.database);
     await assert.rejects(() => store.getJobDefinition("deploy-vm-with-public-ip"));
     await assert.rejects(() => store.getJobDefinition("deploy-vm-without-public-ip"));
     assert.equal((await store.getJobDefinition("user-job")).name, "User job");
 
-    const migrations = await sql<{ name: string }>`
+    migrations = await sql<{ name: string }>`
       SELECT name FROM kysely_migration ORDER BY name
     `.execute(store.database);
     assert.deepEqual(migrations.rows.map(({ name }) => name), ["001_init_db"]);

@@ -2,11 +2,15 @@ import assert from "node:assert/strict";
 import { join } from "node:path";
 import test from "node:test";
 import {
+  checkJobDefinitions,
   formatElapsedSeconds,
   formatJobTiming,
   jobStatusAppearance,
   listCloudDeploymentCases,
 } from "../../../src/interfaces/cli/app.js";
+import { DeploymentOrchestrator } from "../../../src/core/deployment-orchestrator.js";
+import { FakeCloudStackClient } from "../../../src/requests/client.js";
+import { createDeploymentSteps } from "../../../src/requests/deployment-steps.js";
 
 test("loads deployment case labels and order from case files", async () => {
   assert.deepEqual(
@@ -72,6 +76,33 @@ test("loads deployment case labels and order from case files", async () => {
       },
     ],
   );
+});
+
+test("checks persisted definitions and reports the exact dependency failure", async () => {
+  const orchestrator = new DeploymentOrchestrator({
+    databasePath: ":memory:",
+    deploymentSteps: createDeploymentSteps(new FakeCloudStackClient({
+      baseUrl: "https://definition-check.test/api",
+    })),
+  });
+  try {
+    const results = await checkJobDefinitions(orchestrator);
+    const valid = results.find(({ id }) => id === "deploy-vpc-with-acl-rules");
+    const invalid = results.find(({ id }) => id === "deploy-vm-with-missing-subnet");
+    const unknown = results.find(({ id }) => id === "deploy-vm-with-unknown-steps");
+    assert.equal(valid?.valid, true);
+    assert.deepEqual(valid?.stepIds, ["vpc", "acl-list", "acl-rule"]);
+    assert.equal(invalid?.valid, false);
+    assert.equal(
+      invalid?.error,
+      "Deployment step vm requires missing dependency: subnet",
+    );
+    assert.equal(unknown?.valid, false);
+    assert.deepEqual(unknown?.stepIds, ["vpc-new", "acl-list", "vm-new"]);
+    assert.equal(unknown?.error, "Unknown deployment step ID: vpc-new");
+  } finally {
+    await orchestrator.close();
+  }
 });
 
 test("maps final job states to distinct terminal indicators", () => {
