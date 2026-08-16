@@ -95,8 +95,9 @@ Case berada di `src/interfaces/cli/cases`.
 | `01.without-public-ip.json` | Deployment VM tanpa public IP. |
 | `02.with-public-ip.json` | Deployment VM dengan public IP dan static NAT. |
 | `03.parallel-acl-rules.json` | Lima ACL rule di-expand dari satu logical step dan berjalan paralel. |
-| `04.failed-static-nat.json` | Deployment public IP dengan static NAT gagal, di-retry, lalu rollback. |
-| `05.failed-job.json` | ACL rule gagal pada attempt awal, lalu sukses pada retry pertama. |
+| `04.failed-static-nat.json` | Static NAT gagal; rollback VPC gagal sekali lalu sukses setelah retry. |
+| `05.failed-job.json` | ACL rule terus gagal, di-retry, lalu deployment di-rollback. |
+| `06.retry-jobstatus-2.json` | ACL rule mendapat `jobstatus=2`, di-retry, lalu sukses. |
 
 Nilai yang sama untuk semua step dapat diletakkan di `defaults`. `apiControl` dan `config`
 pada sebuah step akan meng-override bagian yang diperlukan:
@@ -155,18 +156,32 @@ maxRetries = 1 → maksimal 2 attempts
 maxRetries = 2 → maksimal 3 attempts
 ```
 
-Untuk kebutuhan demo, `config.demoSuccessOnRetry` dapat membuat fake API sukses mulai
-retry tertentu. Contoh berikut gagal pada attempt awal dan sukses pada retry pertama:
+Untuk kebutuhan demo, `apiControl.resultSequence` menentukan hasil fake API pada setiap
+attempt. Contoh berikut gagal dengan `jobstatus=2`, lalu sukses pada retry pertama:
 
 ```json
 {
-  "apiControl": { "result": 2 },
-  "config": { "maxRetries": 2, "demoSuccessOnRetry": 1 }
+  "apiControl": { "resultSequence": [2, 1] },
+  "config": { "maxRetries": 1 }
 }
 ```
 
-Opsi ini hanya memengaruhi `result` simulasi fake API dan tidak mengubah perilaku retry
-ketika tidak dikonfigurasi.
+Elemen pertama digunakan oleh attempt pertama, elemen kedua oleh retry pertama, dan
+seterusnya. Eksekusi berhenti setelah hasil sukses. Jika jumlah attempt melebihi panjang
+sequence, nilai terakhir digunakan kembali. Opsi ini tidak menambahkan jeda retry.
+
+Rollback memiliki sequence dan batas retry terpisah:
+
+```json
+{
+  "apiControl": { "rollbackResultSequence": [2, 1] },
+  "config": { "maxRollbackRetries": 1 }
+}
+```
+
+Contoh tersebut membuat rollback pertama gagal dan retry rollback pertama sukses.
+Tanpa `maxRollbackRetries`, rollback hanya dicoba satu kali. Attempt rollback disimpan
+terpisah dari attempt eksekusi sehingga proses rollback yang terputus tetap dapat dilanjutkan.
 
 Jika semua retry gagal:
 

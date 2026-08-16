@@ -64,7 +64,10 @@ export function createDeploymentSteps(
         const result = resultObject(context);
         await deleteVpc({
           client,
-          query: { id: requiredString(result, "id", `${context.jobId} result`), result: 1 },
+          query: {
+            id: requiredString(result, "id", `${context.jobId} result`),
+            ...rollbackApiControl(context),
+          },
           signal: context.signal,
         });
       },
@@ -94,7 +97,10 @@ export function createDeploymentSteps(
         const result = resultObject(context);
         await deleteNetwork({
           client,
-          query: { id: requiredString(result, "id", `${context.jobId} result`), result: 1 },
+          query: {
+            id: requiredString(result, "id", `${context.jobId} result`),
+            ...rollbackApiControl(context),
+          },
           signal: context.signal,
         });
       },
@@ -185,7 +191,10 @@ export function createDeploymentSteps(
         const result = resultObject(context);
         await destroyVirtualMachine({
           client,
-          query: { id: requiredString(result, "id", `${context.jobId} result`), result: 1 },
+          query: {
+            id: requiredString(result, "id", `${context.jobId} result`),
+            ...rollbackApiControl(context),
+          },
           signal: context.signal,
         });
       },
@@ -283,27 +292,46 @@ function optionalInputNumber(input: JsonObject, key: string): number | undefined
 
 /** Extracts fake-API timing and outcome controls while applying safe defaults. */
 function apiControl(
-  context: Pick<
-    JobRunContext,
-    "apiControl" | "attempt" | "demoSuccessOnRetry" | "input"
-  >,
+  context: Pick<JobRunContext, "apiControl" | "attempt" | "input">,
 ): ApiParameters {
   // Reading the legacy input location keeps existing programmatic callers compatible.
   const input = asObject(context.input ?? {}, "job input");
   const controlValue = context.apiControl ?? input.apiControl;
   const control = controlValue === undefined ? {} : asObject(controlValue, "apiControl");
-  const demoShouldSucceed = context.demoSuccessOnRetry !== undefined
-    && Number.isInteger(context.demoSuccessOnRetry)
-    && context.demoSuccessOnRetry > 0
-    && context.attempt > context.demoSuccessOnRetry;
   return {
-    // Successful completion is the default unless a test case explicitly overrides it.
-    result: demoShouldSucceed
-      ? 1
-      : typeof control.result === "number" ? control.result : 1,
+    // A configured sequence maps attempts to results and repeats its last value if exhausted.
+    result: resultFromSequence(control.resultSequence, context.attempt)
+      ?? (typeof control.result === "number" ? control.result : 1),
     delay: typeof control.delay === "number" ? control.delay : undefined,
     timeout: typeof control.timeout === "number" ? control.timeout : undefined,
   };
+}
+
+/** Extracts the fake-API result for one rollback attempt. */
+function rollbackApiControl(
+  context: Pick<JobRollbackContext, "apiControl" | "attempt">,
+): ApiParameters {
+  const control = context.apiControl === undefined
+    ? {}
+    : asObject(context.apiControl, "apiControl");
+  return {
+    result: resultFromSequence(control.rollbackResultSequence, context.attempt) ?? 1,
+  };
+}
+
+/** Maps a one-based attempt number to a finite sequence value, repeating the last value. */
+function resultFromSequence(
+  value: JsonObject[string] | undefined,
+  attempt: number,
+): number | undefined {
+  const sequence = Array.isArray(value)
+    ? value.filter(
+      (candidate): candidate is number =>
+        typeof candidate === "number" && Number.isFinite(candidate),
+    )
+    : [];
+  const index = Math.min(attempt - 1, sequence.length - 1);
+  return index >= 0 ? sequence[index] : undefined;
 }
 
 /** Finds the VM network identifier on either the VM object or one of its NICs. */

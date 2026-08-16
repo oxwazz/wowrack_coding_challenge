@@ -17,6 +17,7 @@ export class DeploymentOrchestrator {
   readonly store: OrchestratorStore;
   private readonly scheduler: Scheduler;
   private readonly maxRetries: number;
+  private readonly maxRollbackRetries: number;
   private readonly deploymentSteps: DeploymentStepRegistry | undefined;
 
   constructor(config: DeploymentOrchestratorConfig) {
@@ -26,6 +27,7 @@ export class DeploymentOrchestrator {
     }
     this.store = new OrchestratorStore(config.databasePath);
     this.maxRetries = config.maxRetries ?? 0;
+    this.maxRollbackRetries = config.maxRollbackRetries ?? 0;
     this.deploymentSteps = config.deploymentSteps;
     const executor = new JobExecutor(this.store, handlers, config.jobTimeoutMs ?? 30_000);
     this.scheduler = new Scheduler(this.store, executor);
@@ -37,7 +39,11 @@ export class DeploymentOrchestrator {
   ): Promise<string> {
     await this.store.createJobRun(
       jobRunId,
-      jobs.map((job) => ({ ...job, maxRetries: job.maxRetries ?? this.maxRetries })),
+      jobs.map((job) => ({
+        ...job,
+        maxRetries: job.maxRetries ?? this.maxRetries,
+        maxRollbackRetries: job.maxRollbackRetries ?? this.maxRollbackRetries,
+      })),
     );
     return jobRunId;
   }
@@ -53,7 +59,11 @@ export class DeploymentOrchestrator {
     await this.store.createJobRun(
       jobRunId,
       resolveJobCase(definition, deploymentCase, this.deploymentSteps)
-        .map((job) => ({ ...job, maxRetries: job.maxRetries ?? this.maxRetries })),
+        .map((job) => ({
+          ...job,
+          maxRetries: job.maxRetries ?? this.maxRetries,
+          maxRollbackRetries: job.maxRollbackRetries ?? this.maxRollbackRetries,
+        })),
       definition.id,
     );
     return jobRunId;

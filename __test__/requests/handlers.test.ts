@@ -63,8 +63,11 @@ test("resolves separate stored DAGs with and without public IP", async () => {
   assert.deepEqual(withPublicIp.at(-1)?.dependsOn, ["vm", "public-ip"]);
 });
 
-test("loads the five focused deployment cases", async () => {
+test("loads the six focused deployment cases", async () => {
   const failedCase = await loadCloudDeploymentCase(join(casesDirectory, "05.failed-job.json"));
+  const retryStatusCase = await loadCloudDeploymentCase(
+    join(casesDirectory, "06.retry-jobstatus-2.json"),
+  );
   const parallelAclCase = await loadCloudDeploymentCase(
     join(casesDirectory, "03.parallel-acl-rules.json"),
   );
@@ -82,7 +85,20 @@ test("loads the five focused deployment cases", async () => {
     result: 2,
   });
   assert.equal(failedCase.steps["acl-rule"]?.config?.maxRetries, 2);
-  assert.equal(failedCase.steps["acl-rule"]?.config?.demoSuccessOnRetry, 1);
+  assert.deepEqual(retryStatusCase.steps["acl-rule"]?.apiControl, {
+    resultSequence: [2, 1],
+  });
+  assert.deepEqual(retryStatusCase.steps["acl-rule"]?.config, {
+    maxRetries: 1,
+  });
+  assert.deepEqual(
+    resolveJobCase(
+      await loadDeployVmDefinition(retryStatusCase.jobId),
+      retryStatusCase,
+      definitionSteps,
+    ).find((job) => job.id === "acl-rule")?.apiControl,
+    { delay: 0, timeout: 0, result: 1, resultSequence: [2, 1] },
+  );
   assert.deepEqual(failedCase.steps.vm?.input, {
     name: "wowdev-vm",
     serviceOfferingId: "offering-1",
@@ -135,12 +151,17 @@ test("loads the five focused deployment cases", async () => {
       {
         filename: "04.failed-static-nat.json",
         index: 4,
-        description: "Static NAT gagal, retry, lalu rollback",
+        description: "Static NAT gagal; rollback VPC sukses setelah retry",
       },
       {
         filename: "05.failed-job.json",
         index: 5,
-        description: "Job gagal, lalu sukses pada retry pertama",
+        description: "Job gagal, retry, lalu rollback",
+      },
+      {
+        filename: "06.retry-jobstatus-2.json",
+        index: 6,
+        description: "Jobstatus 2, retry, lalu sukses",
       },
     ],
   );
@@ -158,6 +179,20 @@ test("loads a public-IP case configured to fail static NAT", async () => {
 
   assert.equal(deploymentCase.jobId, "deploy-vm-with-public-ip");
   assert.equal(jobs.length, 8);
+  assert.deepEqual(jobs.find((job) => job.id === "vpc"), {
+    id: "vpc",
+    type: "vpc",
+    dependsOn: [],
+    input: { cidr: "10.20.0.0/16", name: "wowdev-vpc" },
+    apiControl: {
+      delay: 0,
+      timeout: 0,
+      result: 1,
+      rollbackResultSequence: [2, 1],
+    },
+    maxRetries: 1,
+    maxRollbackRetries: 1,
+  });
   assert.deepEqual(jobs.find((job) => job.id === "static-nat"), {
     id: "static-nat",
     type: "static-nat",
@@ -190,6 +225,7 @@ test("retries failed static NAT and rolls back its public-IP deployment", async 
     assert.equal(jobs.vm?.status, "ROLLED_BACK");
     assert.equal(jobs.subnet?.status, "ROLLED_BACK");
     assert.equal(jobs.vpc?.status, "ROLLED_BACK");
+    assert.equal(jobs.vpc?.rollbackAttempt, 2);
 
     const commands = api.requests.map((url) => url.searchParams.get("command"));
     assert.equal(commands.filter((command) => command === "enableStaticNat").length, 3);
@@ -202,6 +238,12 @@ test("retries failed static NAT and rolls back its public-IP deployment", async 
     )) {
       assert.equal(request.searchParams.get("result"), "2");
     }
+    assert.deepEqual(
+      api.requests
+        .filter((url) => url.searchParams.get("command") === "deleteVpc")
+        .map((url) => url.searchParams.get("result")),
+      ["2", "1"],
+    );
   } finally {
     await orchestrator.close();
     await api.close();
@@ -345,7 +387,6 @@ test("turns jobstatus=2 into failure and calls documented rollback APIs", async 
       deploymentCase.defaults.config.maxRetries = 0;
     }
     if (deploymentCase.steps["acl-rule"]?.config !== undefined) {
-      delete deploymentCase.steps["acl-rule"].config.demoSuccessOnRetry;
       deploymentCase.steps["acl-rule"].config.maxRetries = 0;
     }
     const result = await orchestrator.deployCase(deploymentCase);
@@ -383,7 +424,7 @@ test("demo case succeeds when the first retry is executed", async () => {
 
   try {
     const deploymentCase = await loadCloudDeploymentCase(
-      join(casesDirectory, "05.failed-job.json"),
+      join(casesDirectory, "06.retry-jobstatus-2.json"),
     );
     const result = await orchestrator.deployCase(deploymentCase);
     const aclRule = result.jobs.find((job) => job.jobId === "acl-rule");

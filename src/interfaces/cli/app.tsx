@@ -127,6 +127,7 @@ export async function main(): Promise<void> {
     deploymentSteps: createDeploymentSteps(client),
     jobTimeoutMs: CLI_DEFAULTS.jobTimeoutMs,
     maxRetries: CLI_DEFAULTS.maxRetries,
+    maxRollbackRetries: CLI_DEFAULTS.maxRollbackRetries,
   });
   try {
     process.exitCode = await runInteractiveCli({
@@ -403,6 +404,13 @@ function Confirm({
           deploymentCase.defaults?.config?.maxRetries
             ?? deploymentCase.defaults?.maxRetries
             ?? maxRetries,
+        )}
+      />
+      <SummaryRow
+        label="Retry rollback"
+        value={String(
+          deploymentCase.defaults?.config?.maxRollbackRetries
+            ?? CLI_DEFAULTS.maxRollbackRetries,
         )}
       />
       <SummaryRow label="Database" value={databasePath} />
@@ -721,9 +729,11 @@ function JobTable({
     <Box flexDirection="column" marginTop={1}>
       {jobs.map((job) => {
         const appearance = jobStatusAppearance(job.status);
-        const attempt = job.attempt > 0
-          ? `attempt ${job.attempt}/${job.maxRetries + 1}`
-          : "belum dijalankan";
+        const attempt = job.rollbackAttempt > 0
+          ? `rollback ${job.rollbackAttempt}/${job.maxRollbackRetries + 1}`
+          : job.attempt > 0
+            ? `attempt ${job.attempt}/${job.maxRetries + 1}`
+            : "belum dijalankan";
         return (
           <Box key={job.jobId} flexDirection="column">
             <Box>

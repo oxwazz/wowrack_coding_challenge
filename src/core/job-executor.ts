@@ -51,34 +51,48 @@ export class JobExecutor {
   }
 
   async rollback(jobRunId: string, jobId: string): Promise<boolean> {
-    const job = await this.store.getJobStepRun(jobRunId, jobId);
-    const rollback = this.handlers[job.type]?.rollback;
-    await this.store.transitionJob(jobRunId, jobId, {
-      status: "ROLLING_BACK", error: null,
-    });
+    const initial = await this.store.getJobStepRun(jobRunId, jobId);
+    const rollback = this.handlers[initial.type]?.rollback;
     if (rollback === undefined) {
+      await this.store.transitionJob(jobRunId, jobId, {
+        status: "ROLLING_BACK", error: null,
+      });
       await this.store.transitionJob(jobRunId, jobId, {
         status: "ROLLBACK_SKIPPED", error: null,
       });
       return true;
     }
-    try {
-      await this.withTimeout(jobId, new AbortController().signal, async (signal) => {
-        await rollback({
-          jobRunId, jobId, input: job.input, result: job.result, signal,
-          sleep: (milliseconds) => sleep(milliseconds, signal),
+
+    while (true) {
+      const current = await this.store.getJobStepRun(jobRunId, jobId);
+      const attempt = current.rollbackAttempt + 1;
+      const job = await this.store.transitionJob(jobRunId, jobId, {
+        status: "ROLLING_BACK", error: null,
+      });
+      try {
+        await this.withTimeout(jobId, new AbortController().signal, async (signal) => {
+          await rollback({
+            jobRunId,
+            jobId,
+            attempt,
+            input: job.input,
+            ...(job.apiControl === undefined ? {} : { apiControl: job.apiControl }),
+            result: job.result,
+            signal,
+            sleep: (milliseconds) => sleep(milliseconds, signal),
+          });
         });
-      });
-      await this.store.transitionJob(jobRunId, jobId, {
-        status: "ROLLED_BACK", error: null,
-      });
-      return true;
-    } catch (cause) {
-      const error = cause instanceof Error ? cause : new Error(String(cause));
-      await this.store.transitionJob(jobRunId, jobId, {
-        status: "ROLLBACK_FAILED", error: error.message,
-      });
-      return false;
+        await this.store.transitionJob(jobRunId, jobId, {
+          status: "ROLLED_BACK", error: null,
+        });
+        return true;
+      } catch (cause) {
+        const error = cause instanceof Error ? cause : new Error(String(cause));
+        await this.store.transitionJob(jobRunId, jobId, {
+          status: "ROLLBACK_FAILED", error: error.message,
+        });
+        if (attempt > current.maxRollbackRetries) return false;
+      }
     }
   }
 
@@ -88,9 +102,6 @@ export class JobExecutor {
         jobRunId: job.jobRunId,
         jobId: job.jobId,
         attempt: job.attempt,
-        ...(job.demoSuccessOnRetry === undefined
-          ? {}
-          : { demoSuccessOnRetry: job.demoSuccessOnRetry }),
         input: job.input,
         ...(job.apiControl === undefined ? {} : { apiControl: job.apiControl }),
         dependencyResults: await this.store.getDependencyResults(job.jobRunId, job.jobId),

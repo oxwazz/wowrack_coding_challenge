@@ -16,8 +16,8 @@ export interface JobDefinition {
   dependsOn: string[];
   /** Number of retries after the first attempt. */
   maxRetries?: number;
-  /** Demo only: force the fake API to succeed starting from this retry number. */
-  demoSuccessOnRetry?: number;
+  /** Number of rollback retries after the first rollback attempt. */
+  maxRollbackRetries?: number;
   /** JSON-serializable handler input persisted with the job. */
   input?: JsonValue;
   /** Fake API behavior used by demo cases; kept separate from business input. */
@@ -54,8 +54,8 @@ export interface JobCaseDefaults {
 export interface JobCaseConfig {
   /** Number of retries after the first attempt. */
   maxRetries?: number;
-  /** Demo only: force the fake API to succeed starting from this retry number. */
-  demoSuccessOnRetry?: number;
+  /** Number of rollback retries after the first rollback attempt. */
+  maxRollbackRetries?: number;
 }
 
 export interface JobCaseStepInstance {
@@ -85,7 +85,8 @@ export interface JobStepRunRecord {
   status: JobStatus;
   attempt: number;
   maxRetries: number;
-  demoSuccessOnRetry?: number;
+  rollbackAttempt: number;
+  maxRollbackRetries: number;
   input: JsonValue | null;
   apiControl?: JsonValue;
   result: JsonValue | null;
@@ -121,7 +122,6 @@ export interface JobRunContext {
   jobRunId: string;
   jobId: string;
   attempt: number;
-  demoSuccessOnRetry?: number;
   input: JsonValue | null;
   apiControl?: JsonValue;
   dependencyResults: Readonly<Record<string, JsonValue | null>>;
@@ -132,7 +132,9 @@ export interface JobRunContext {
 export interface JobRollbackContext {
   jobRunId: string;
   jobId: string;
+  attempt: number;
   input: JsonValue | null;
+  apiControl?: JsonValue;
   result: JsonValue | null;
   signal: AbortSignal;
   sleep: (milliseconds: number) => Promise<void>;
@@ -161,6 +163,8 @@ export interface OrchestratorOptions {
   jobTimeoutMs?: number;
   /** Default retry count for jobs that do not define their own retry count. */
   maxRetries?: number;
+  /** Default rollback retry count for jobs without an explicit value. */
+  maxRollbackRetries?: number;
 }
 
 type DeploymentOrchestratorBaseConfig = OrchestratorOptions & {

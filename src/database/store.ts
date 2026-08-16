@@ -236,9 +236,8 @@ export class OrchestratorStore {
         status: latest.status,
         attempt: latest.attempt,
         maxRetries: job.maxRetries ?? 0,
-        ...(job.demoSuccessOnRetry === undefined
-          ? {}
-          : { demoSuccessOnRetry: job.demoSuccessOnRetry }),
+        rollbackAttempt: history.filter((log) => log.status === "ROLLING_BACK").length,
+        maxRollbackRetries: job.maxRollbackRetries ?? 0,
         input: job.input ?? null,
         ...(job.apiControl === undefined ? {} : { apiControl: job.apiControl }),
         result: latest.result,

@@ -34,12 +34,17 @@ test("loads deployment case labels and order from case files", async () => {
       {
         filename: "04.failed-static-nat.json",
         index: 4,
-        description: "Static NAT gagal, retry, lalu rollback",
+        description: "Static NAT gagal; rollback VPC sukses setelah retry",
       },
       {
         filename: "05.failed-job.json",
         index: 5,
-        description: "Job gagal, lalu sukses pada retry pertama",
+        description: "Job gagal, retry, lalu rollback",
+      },
+      {
+        filename: "06.retry-jobstatus-2.json",
+        index: 6,
+        description: "Jobstatus 2, retry, lalu sukses",
       },
     ],
   );

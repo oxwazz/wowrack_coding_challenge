@@ -3,6 +3,7 @@ export const CLI_DEFAULTS = {
   casesDirectory: "src/interfaces/cli/cases",
   jobTimeoutMs: 30_000,
   maxRetries: 1,
+  maxRollbackRetries: 0,
 } as const;
 
 /**

@@ -238,6 +238,7 @@ test("skips unstarted jobs and rolls successful work back in reverse DAG order",
 
 test("JobExecutor retries, persists the result, and rolls it back", async () => {
   const attempts: number[] = [];
+  const rollbackAttempts: number[] = [];
   let rolledBackResult: JsonValue | null = null;
   const handlers: HandlerRegistry = {
     flaky: {
@@ -247,6 +248,8 @@ test("JobExecutor retries, persists the result, and rolls it back", async () => 
         return { resourceId: "resource-1" };
       },
       async rollback(context) {
+        rollbackAttempts.push(context.attempt);
+        if (context.attempt === 1) throw new Error("temporary rollback failure");
         rolledBackResult = context.result;
       },
     },
@@ -254,7 +257,13 @@ test("JobExecutor retries, persists the result, and rolls it back", async () => 
   const store = new OrchestratorStore(":memory:");
   try {
     await store.createJobRun("executor-test", [
-      { id: "resource", type: "flaky", dependsOn: [], maxRetries: 1 },
+      {
+        id: "resource",
+        type: "flaky",
+        dependsOn: [],
+        maxRetries: 1,
+        maxRollbackRetries: 1,
+      },
     ]);
     await store.transitionJob("executor-test", "resource", {
       status: "READY",
@@ -274,12 +283,13 @@ test("JobExecutor retries, persists the result, and rolls it back", async () => 
 
     const rollback = await executor.rollback("executor-test", "resource");
     assert.equal(rollback, true);
+    assert.deepEqual(rollbackAttempts, [1, 2]);
     assert.deepEqual(rolledBackResult, { resourceId: "resource-1" });
     assert.deepEqual(
       (await store.getJobRunLogs("executor-test", "resource")).map(({ status }) => status),
       [
         "PENDING", "READY", "RUNNING", "FAILED", "RETRYING", "RUNNING",
-        "SUCCESS", "ROLLING_BACK", "ROLLED_BACK",
+        "SUCCESS", "ROLLING_BACK", "ROLLBACK_FAILED", "ROLLING_BACK", "ROLLED_BACK",
       ],
     );
   } finally {
