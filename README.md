@@ -45,7 +45,7 @@ src/database/__generated__/deployments.sqlite
 Ketika sebuah case dipilih, aplikasi akan:
 
 1. Membaca array ID API dari SQLite.
-2. Membuat DAG dari spec dependency di setiap file API.
+2. Membuat DAG dari deployment step dependency di setiap file API.
 3. Menggabungkan DAG dengan input case JSON.
 4. Membuat satu `job run` dengan ID unik.
 5. Menjalankan job yang dependency-nya sudah berhasil.
@@ -153,21 +153,22 @@ Folder `src/requests` berisi:
 
 - `client.ts`: mengirim HTTP request dan melakukan polling asynchronous job.
 - `handlers.ts`: mengubah job menjadi request CloudStack beserta rollback-nya.
-- `api/*.ts`: satu command per file beserta command constant, query, props, result, dan job spec-nya.
+- `api/*.ts`: satu command per file beserta metadata operasi, query, props, result, dan metadata deployment step bila dapat dijadwalkan.
 - `api/commands.ts`: metadata command yang disusun dari constant milik setiap file API.
-- `api/specs.ts`: registry seluruh API yang dapat menjadi node deployment.
+- `api/deployment-steps.ts`: registry seluruh step yang dapat menjadi node deployment.
 
 Request utama yang digunakan antara lain `createVpc`, `createNetwork`, `createNetworkACLList`,
 `deployVirtualMachine`, `destroyVirtualMachine`, dan `enableStaticNat`.
 
-Setiap job spec mendeklarasikan `id`, `handler`, dan `dependsOn`. Kolom `jobs.definition`
+Metadata operasi API (`command` dan opsional `resultKey`) dipisahkan dari metadata deployment
+step (`id`, `handler`, dan `dependsOn`). Kolom `jobs.definition`
 tidak menyimpan ulang metadata tersebut; nilainya hanya array ID seperti berikut:
 
 ```json
 ["vpc", "subnet", "acl-list", "acl-rule", "attach-acl", "vm"]
 ```
 
-`buildApiJobGraph` mengambil spec untuk setiap ID, memvalidasi dependency, lalu menghasilkan
+`buildApiJobGraph` mengambil deployment step untuk setiap ID, memvalidasi dependency, lalu menghasilkan
 urutan topologis yang digunakan scheduler.
 
 ## Penyimpanan data

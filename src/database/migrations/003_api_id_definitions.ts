@@ -18,7 +18,7 @@ function isLegacyDefinition(value: unknown): value is LegacyDefinition {
   ));
 }
 
-/** Converts legacy embedded DAG definitions into arrays of API IDs. */
+/** Converts legacy embedded DAG definitions into arrays of deployment step IDs. */
 export async function up(db: Kysely<Database>): Promise<void> {
   const rows = await db.selectFrom("jobs").select(["id", "definition"]).execute();
   for (const row of rows) {

@@ -1,42 +1,50 @@
-import type { JobStepDefinition } from "../types.js";
-import { API_JOB_SPECS } from "../requests/api/specs.js";
-import type { ApiJobSpec } from "../requests/api/shared.js";
+import type { DeploymentStepSpec, JobStepDefinition } from "../types.js";
+import { DEPLOYMENT_STEP_SPECS } from "../requests/api/deployment-steps.js";
 
-const apiSpecs: Readonly<Record<string, ApiJobSpec>> = API_JOB_SPECS;
+const deploymentStepSpecs: Readonly<Record<string, DeploymentStepSpec>> =
+  DEPLOYMENT_STEP_SPECS;
 
 /**
- * Builds a topologically ordered DAG from API IDs and the specs colocated with each API.
+ * Builds a topologically ordered DAG from deployment step IDs.
  * Unknown IDs, duplicate IDs, omitted dependencies, and cycles are rejected eagerly.
  */
 export function buildApiJobGraph(
-  apiIds: readonly string[],
-  specs: Readonly<Record<string, ApiJobSpec>> = apiSpecs,
+  stepIds: readonly string[],
+  specs: Readonly<Record<string, DeploymentStepSpec>> = deploymentStepSpecs,
 ): JobStepDefinition[] {
   const selected = new Set<string>();
-  for (const apiId of apiIds) {
-    if (selected.has(apiId)) throw new Error(`Duplicate API ID in job definition: ${apiId}`);
-    if (specs[apiId] === undefined) throw new Error(`Unknown API ID: ${apiId}`);
-    selected.add(apiId);
+  for (const stepId of stepIds) {
+    if (selected.has(stepId)) {
+      throw new Error(`Duplicate deployment step ID in job definition: ${stepId}`);
+    }
+    if (specs[stepId] === undefined) {
+      throw new Error(`Unknown deployment step ID: ${stepId}`);
+    }
+    selected.add(stepId);
   }
 
   const visiting = new Set<string>();
   const visited = new Set<string>();
   const ordered: JobStepDefinition[] = [];
 
-  const visit = (apiId: string): void => {
-    if (visited.has(apiId)) return;
-    if (visiting.has(apiId)) throw new Error(`API dependency cycle detected at: ${apiId}`);
-    const spec = specs[apiId];
-    if (spec === undefined) throw new Error(`Unknown API ID: ${apiId}`);
-    visiting.add(apiId);
+  const visit = (stepId: string): void => {
+    if (visited.has(stepId)) return;
+    if (visiting.has(stepId)) {
+      throw new Error(`Deployment step dependency cycle detected at: ${stepId}`);
+    }
+    const spec = specs[stepId];
+    if (spec === undefined) throw new Error(`Unknown deployment step ID: ${stepId}`);
+    visiting.add(stepId);
     for (const dependencyId of spec.dependsOn) {
       if (!selected.has(dependencyId)) {
-        throw new Error(`API ${apiId} requires missing dependency: ${dependencyId}`);
+        throw new Error(
+          `Deployment step ${stepId} requires missing dependency: ${dependencyId}`,
+        );
       }
       visit(dependencyId);
     }
-    visiting.delete(apiId);
-    visited.add(apiId);
+    visiting.delete(stepId);
+    visited.add(stepId);
     ordered.push({
       id: spec.id,
       handler: spec.handler,
@@ -44,6 +52,6 @@ export function buildApiJobGraph(
     });
   };
 
-  for (const apiId of apiIds) visit(apiId);
+  for (const stepId of stepIds) visit(stepId);
   return ordered;
 }

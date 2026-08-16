@@ -1,15 +1,18 @@
-import type { JsonObject } from "../../types.js";
+import type { DeploymentStepSpec, JsonObject } from "../../types.js";
 import type { FakeCloudStackClient } from "../client.js";
 import { asObject, requiredArray } from "../client.js";
-import type { ApiControlQuery, ApiJobSpec } from "./shared.js";
+import type { ApiControlQuery, ApiOperationSpec } from "./shared.js";
 
-export const listPublicIpAddressesSpec = {
-  id: "public-ip",
+export const listPublicIpAddressesApi = {
   command: "listPublicIpAddresses",
   resultKey: "publicipaddress",
+} as const satisfies ApiOperationSpec;
+
+export const listPublicIpAddressesStep = {
+  id: "public-ip",
   handler: "list_public_ip",
   dependsOn: [],
-} as const satisfies ApiJobSpec;
+} as const satisfies DeploymentStepSpec;
 
 export type ListPublicIpAddressesQuery = ApiControlQuery;
 
@@ -26,14 +29,14 @@ export async function listPublicIpAddresses(
   props: ListPublicIpAddressesProps,
 ): Promise<ListPublicIpAddressesResult> {
   const response = await props.client.request(
-    listPublicIpAddressesSpec.command,
+    listPublicIpAddressesApi.command,
     props.query,
     props.signal,
   );
   return requiredArray(
     response,
-    listPublicIpAddressesSpec.resultKey,
-    `${listPublicIpAddressesSpec.command} response`,
+    listPublicIpAddressesApi.resultKey,
+    `${listPublicIpAddressesApi.command} response`,
   ).map((address, index) => (
     asObject(address, `publicipaddress[${index}]`) as PublicIpAddress
   ));

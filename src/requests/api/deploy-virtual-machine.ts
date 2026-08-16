@@ -1,15 +1,18 @@
-import type { JsonObject } from "../../types.js";
+import type { DeploymentStepSpec, JsonObject } from "../../types.js";
 import type { FakeCloudStackClient } from "../client.js";
-import type { ApiControlQuery, ApiJobSpec } from "./shared.js";
+import type { ApiControlQuery, ApiOperationSpec } from "./shared.js";
 import { runAsyncObject } from "./shared.js";
 
-export const deployVirtualMachineSpec = {
-  id: "vm",
+export const deployVirtualMachineApi = {
   command: "deployVirtualMachine",
   resultKey: "virtualmachine",
+} as const satisfies ApiOperationSpec;
+
+export const deployVirtualMachineStep = {
+  id: "vm",
   handler: "deploy_vm",
   dependsOn: ["subnet"],
-} as const satisfies ApiJobSpec;
+} as const satisfies DeploymentStepSpec;
 
 export type DeployVirtualMachineQuery = ApiControlQuery & Readonly<{
   networkids: string;
@@ -31,9 +34,9 @@ export async function deployVirtualMachine(
 ): Promise<DeployVirtualMachineResult> {
   const result = await runAsyncObject(
     props.client,
-    deployVirtualMachineSpec.command,
+    deployVirtualMachineApi.command,
     props.query,
-    deployVirtualMachineSpec.resultKey,
+    deployVirtualMachineApi.resultKey,
     props.signal,
   );
   return result as DeployVirtualMachineResult;

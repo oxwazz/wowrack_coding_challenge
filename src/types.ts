@@ -3,7 +3,7 @@ import type {
   JOB_STATUSES,
 } from "./constants.js";
 import type { DeploymentOrchestrator } from "./core/deployment-orchestrator.js";
-import type { ApiJobId } from "./requests/api/specs.js";
+import type { DeploymentStepId } from "./requests/api/deployment-steps.js";
 
 export type JsonPrimitive = string | number | boolean | null;
 export type JsonValue = JsonPrimitive | JsonValue[] | { [key: string]: JsonValue };
@@ -30,11 +30,19 @@ export interface JobStepDefinition {
   dependsOn: string[];
 }
 
+/** Static orchestration metadata used to build the deployment DAG. */
+export interface DeploymentStepSpec {
+  id: string;
+  /** Key used to resolve run/rollback functions from the handler registry. */
+  handler: string;
+  dependsOn: readonly string[];
+}
+
 export interface StoredJobDefinition {
   id: string;
   name: string;
-  /** API IDs selected for this template; graph metadata lives in each API file. */
-  apiIds: ApiJobId[];
+  /** Deployment step IDs selected for this template. */
+  apiIds: DeploymentStepId[];
 }
 
 export interface JobDefinitionRecord extends StoredJobDefinition {

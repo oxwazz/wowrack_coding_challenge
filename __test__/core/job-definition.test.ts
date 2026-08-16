@@ -9,7 +9,7 @@ const definition: StoredJobDefinition = {
   apiIds: ["vpc", "subnet"],
 };
 
-test("resolveJobCase builds steps from API specs and applies case configuration", () => {
+test("resolveJobCase builds deployment steps and applies case configuration", () => {
   const jobs = resolveJobCase(definition, {
     jobId: "deploy",
     defaults: {

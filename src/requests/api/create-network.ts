@@ -1,15 +1,18 @@
-import type { JsonObject } from "../../types.js";
+import type { DeploymentStepSpec, JsonObject } from "../../types.js";
 import type { FakeCloudStackClient } from "../client.js";
 import { requiredObject } from "../client.js";
-import type { ApiControlQuery, ApiJobSpec } from "./shared.js";
+import type { ApiControlQuery, ApiOperationSpec } from "./shared.js";
 
-export const createNetworkSpec = {
-  id: "subnet",
+export const createNetworkApi = {
   command: "createNetwork",
   resultKey: "network",
+} as const satisfies ApiOperationSpec;
+
+export const createNetworkStep = {
+  id: "subnet",
   handler: "create_subnet",
   dependsOn: ["vpc"],
-} as const satisfies ApiJobSpec;
+} as const satisfies DeploymentStepSpec;
 
 export type CreateNetworkQuery = ApiControlQuery & Readonly<{
   vpcid: string;
@@ -30,13 +33,13 @@ export async function createNetwork(
   props: CreateNetworkProps,
 ): Promise<CreateNetworkResult> {
   const response = await props.client.request(
-    createNetworkSpec.command,
+    createNetworkApi.command,
     props.query,
     props.signal,
   );
   return requiredObject(
     response,
-    createNetworkSpec.resultKey,
-    `${createNetworkSpec.command} response`,
+    createNetworkApi.resultKey,
+    `${createNetworkApi.command} response`,
   ) as CreateNetworkResult;
 }

@@ -1,15 +1,18 @@
-import type { JsonObject } from "../../types.js";
+import type { DeploymentStepSpec, JsonObject } from "../../types.js";
 import type { FakeCloudStackClient } from "../client.js";
-import type { ApiControlQuery, ApiJobSpec } from "./shared.js";
+import type { ApiControlQuery, ApiOperationSpec } from "./shared.js";
 import { runAsyncObject } from "./shared.js";
 
-export const createVpcSpec = {
-  id: "vpc",
+export const createVpcApi = {
   command: "createVpc",
   resultKey: "vpc",
+} as const satisfies ApiOperationSpec;
+
+export const createVpcStep = {
+  id: "vpc",
   handler: "create_vpc",
   dependsOn: [],
-} as const satisfies ApiJobSpec;
+} as const satisfies DeploymentStepSpec;
 
 export type CreateVpcQuery = ApiControlQuery & Readonly<{
   cidr: string;
@@ -27,9 +30,9 @@ export type CreateVpcResult = JsonObject & { id: string };
 export async function createVpc(props: CreateVpcProps): Promise<CreateVpcResult> {
   const result = await runAsyncObject(
     props.client,
-    createVpcSpec.command,
+    createVpcApi.command,
     props.query,
-    createVpcSpec.resultKey,
+    createVpcApi.resultKey,
     props.signal,
   );
   return result as CreateVpcResult;

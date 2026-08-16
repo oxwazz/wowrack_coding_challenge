@@ -1,35 +1,35 @@
-import { createNetworkAclListSpec } from "./create-network-acl-list.js";
-import { createNetworkAclSpec } from "./create-network-acl.js";
-import { createNetworkSpec } from "./create-network.js";
-import { createVpcSpec } from "./create-vpc.js";
-import { deleteNetworkSpec } from "./delete-network.js";
-import { deleteVpcSpec } from "./delete-vpc.js";
-import { deployVirtualMachineSpec } from "./deploy-virtual-machine.js";
-import { destroyVirtualMachineSpec } from "./destroy-virtual-machine.js";
-import { enableStaticNatSpec } from "./enable-static-nat.js";
-import { listPublicIpAddressesSpec } from "./list-public-ip-addresses.js";
-import { queryAsyncJobResultSpec } from "./query-async-job-result.js";
-import { replaceNetworkAclListSpec } from "./replace-network-acl-list.js";
+import { createNetworkAclListApi } from "./create-network-acl-list.js";
+import { createNetworkAclApi } from "./create-network-acl.js";
+import { createNetworkApi } from "./create-network.js";
+import { createVpcApi } from "./create-vpc.js";
+import { deleteNetworkApi } from "./delete-network.js";
+import { deleteVpcApi } from "./delete-vpc.js";
+import { deployVirtualMachineApi } from "./deploy-virtual-machine.js";
+import { destroyVirtualMachineApi } from "./destroy-virtual-machine.js";
+import { enableStaticNatApi } from "./enable-static-nat.js";
+import { listPublicIpAddressesApi } from "./list-public-ip-addresses.js";
+import { queryAsyncJobResultApi } from "./query-async-job-result.js";
+import { replaceNetworkAclListApi } from "./replace-network-acl-list.js";
 
 /** Command metadata assembled from the command constants owned by each API file. */
 export const API_COMMANDS = [
-  queryAsyncJobResultSpec.command,
-  createVpcSpec.command,
-  createNetworkSpec.command,
-  createNetworkAclListSpec.command,
-  createNetworkAclSpec.command,
-  replaceNetworkAclListSpec.command,
-  deployVirtualMachineSpec.command,
-  listPublicIpAddressesSpec.command,
-  enableStaticNatSpec.command,
-  destroyVirtualMachineSpec.command,
-  deleteVpcSpec.command,
-  deleteNetworkSpec.command,
+  queryAsyncJobResultApi.command,
+  createVpcApi.command,
+  createNetworkApi.command,
+  createNetworkAclListApi.command,
+  createNetworkAclApi.command,
+  replaceNetworkAclListApi.command,
+  deployVirtualMachineApi.command,
+  listPublicIpAddressesApi.command,
+  enableStaticNatApi.command,
+  destroyVirtualMachineApi.command,
+  deleteVpcApi.command,
+  deleteNetworkApi.command,
 ] as const;
 
 
 export type ApiCommand = (typeof API_COMMANDS)[number];
 export type AsyncApiCommand = Exclude<
   ApiCommand,
-  typeof queryAsyncJobResultSpec.command
+  typeof queryAsyncJobResultApi.command
 >;

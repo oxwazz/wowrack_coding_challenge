@@ -1,10 +1,10 @@
 import type { FakeCloudStackClient } from "../client.js";
-import type { ApiControlQuery, ApiRequestSpec } from "./shared.js";
+import type { ApiControlQuery, ApiOperationSpec } from "./shared.js";
 import { runAsyncSuccess } from "./shared.js";
 
-export const destroyVirtualMachineSpec = {
+export const destroyVirtualMachineApi = {
   command: "destroyVirtualMachine",
-} as const satisfies ApiRequestSpec;
+} as const satisfies ApiOperationSpec;
 
 export type DestroyVirtualMachineQuery = ApiControlQuery & Readonly<{ id: string }>;
 
@@ -21,7 +21,7 @@ export function destroyVirtualMachine(
 ): Promise<DestroyVirtualMachineResult> {
   return runAsyncSuccess(
     props.client,
-    destroyVirtualMachineSpec.command,
+    destroyVirtualMachineApi.command,
     props.query,
     props.signal,
   );

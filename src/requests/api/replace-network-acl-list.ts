@@ -1,13 +1,17 @@
+import type { DeploymentStepSpec } from "../../types.js";
 import type { FakeCloudStackClient } from "../client.js";
-import type { ApiControlQuery, ApiJobSpec } from "./shared.js";
+import type { ApiControlQuery, ApiOperationSpec } from "./shared.js";
 import { runAsyncSuccess } from "./shared.js";
 
-export const replaceNetworkAclListSpec = {
-  id: "attach-acl",
+export const replaceNetworkAclListApi = {
   command: "replaceNetworkACLList",
+} as const satisfies ApiOperationSpec;
+
+export const replaceNetworkAclListStep = {
+  id: "attach-acl",
   handler: "attach_acl_list",
   dependsOn: ["subnet", "acl-list"],
-} as const satisfies ApiJobSpec;
+} as const satisfies DeploymentStepSpec;
 
 export type ReplaceNetworkAclListQuery = ApiControlQuery & Readonly<{
   aclid: string;
@@ -27,7 +31,7 @@ export function replaceNetworkAclList(
 ): Promise<ReplaceNetworkAclListResult> {
   return runAsyncSuccess(
     props.client,
-    replaceNetworkAclListSpec.command,
+    replaceNetworkAclListApi.command,
     props.query,
     props.signal,
   );

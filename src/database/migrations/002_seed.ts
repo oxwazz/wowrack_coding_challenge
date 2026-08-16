@@ -4,7 +4,7 @@ import type { Database } from "../types.js";
 const withPublicIpId = "deploy-vm-with-public-ip";
 const withoutPublicIpId = "deploy-vm-without-public-ip";
 
-// The database selects APIs only; their handlers and dependencies live in API specs.
+// The database selects deployment steps; handlers and dependencies live in source metadata.
 const baseApiIds = ["vpc", "subnet", "acl-list", "acl-rule", "attach-acl", "vm"];
 
 // Public-IP deployment appends NAT-specific work without duplicating the base DAG.

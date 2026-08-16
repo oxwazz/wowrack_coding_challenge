@@ -3,17 +3,10 @@ import type { FakeCloudStackClient } from "../client.js";
 import type { AsyncApiCommand } from "./commands.js";
 import { requiredObject } from "../client.js";
 
-/** Metadata owned by one CloudStack request implementation. */
-export interface ApiRequestSpec {
+/** Metadata owned by one CloudStack API operation implementation. */
+export interface ApiOperationSpec {
   command: string;
   resultKey?: string;
-}
-
-/** Request metadata used to build an executable job graph from API IDs. */
-export interface ApiJobSpec extends ApiRequestSpec {
-  id: string;
-  handler: string;
-  dependsOn: readonly string[];
 }
 
 export type ApiControlQuery = ApiParameters & Readonly<{

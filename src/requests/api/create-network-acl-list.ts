@@ -1,15 +1,18 @@
-import type { JsonObject } from "../../types.js";
+import type { DeploymentStepSpec, JsonObject } from "../../types.js";
 import type { FakeCloudStackClient } from "../client.js";
-import type { ApiControlQuery, ApiJobSpec } from "./shared.js";
+import type { ApiControlQuery, ApiOperationSpec } from "./shared.js";
 import { runAsyncObject } from "./shared.js";
 
-export const createNetworkAclListSpec = {
-  id: "acl-list",
+export const createNetworkAclListApi = {
   command: "createNetworkACLList",
   resultKey: "networkacllist",
+} as const satisfies ApiOperationSpec;
+
+export const createNetworkAclListStep = {
+  id: "acl-list",
   handler: "create_acl_list",
   dependsOn: ["vpc"],
-} as const satisfies ApiJobSpec;
+} as const satisfies DeploymentStepSpec;
 
 export type CreateNetworkAclListQuery = ApiControlQuery & Readonly<{
   vpcid: string;
@@ -29,9 +32,9 @@ export async function createNetworkAclList(
 ): Promise<CreateNetworkAclListResult> {
   const result = await runAsyncObject(
     props.client,
-    createNetworkAclListSpec.command,
+    createNetworkAclListApi.command,
     props.query,
-    createNetworkAclListSpec.resultKey,
+    createNetworkAclListApi.resultKey,
     props.signal,
   );
   return result as CreateNetworkAclListResult;
