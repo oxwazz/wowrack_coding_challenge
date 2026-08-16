@@ -101,6 +101,8 @@ Case berada di `src/interfaces/cli/cases`.
 | `07.rolled-back-after-timeouts.json` | Seluruh attempt subnet terkena timeout, lalu deployment di-rollback. |
 | `08.rolled-back-after-delays.json` | Seluruh attempt subnet terkena delay, lalu deployment di-rollback. |
 | `09.rolled-back-after-jobstatus-2.json` | Subnet terus mendapat `jobstatus=2`, lalu deployment di-rollback. |
+| `10.rolled-back-after-acl-rule-failure.json` | Pembuatan ACL rule gagal tanpa public IP, lalu deployment di-rollback. |
+| `11.rolled-back-after-static-nat-failure.json` | Pembuatan static NAT gagal dengan public IP, lalu deployment di-rollback. |
 
 Nilai yang sama untuk semua step dapat diletakkan di `defaults`. `apiControl` dan `config`
 pada sebuah step akan meng-override bagian yang diperlukan:

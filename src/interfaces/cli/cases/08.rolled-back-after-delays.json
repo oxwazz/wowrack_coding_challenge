@@ -1,5 +1,5 @@
 {
-  "description": "Rolled back - Subnet terus delay sampai retry habis",
+  "description": "Rollback failed - Subnet terus delay sampai retry habis",
   "jobId": "deploy-vm-without-public-ip",
   "defaults": {
     "apiControl": {
@@ -8,8 +8,8 @@
       "result": 1
     },
     "config": {
-      "maxRetries": 1,
-      "maxRollbackRetries": 0,
+      "maxRetries": 4,
+      "maxRollbackRetries": 4,
       "maxTimeout": 30000
     }
   },
@@ -27,11 +27,11 @@
         "netmask": "255.255.255.0"
       },
       "apiControl": {
-        "delaySequence": [2, 2, 2]
+        "delaySequence": [40, 40, 40, 40, 40],
+        "result": 2
       },
       "config": {
-        "maxTimeout": 1000,
-        "maxRetries": 2
+        "maxTimeout": 1000
       }
     },
     "acl-list": {
@@ -57,6 +57,10 @@
         "name": "wowdev-vm",
         "serviceOfferingId": "offering-1",
         "templateId": "template-1"
+      },
+      "config": {
+        "maxRetries": 2,
+        "maxRollbackRetries": 2
       }
     }
   }

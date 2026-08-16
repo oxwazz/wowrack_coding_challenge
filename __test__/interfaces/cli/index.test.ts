@@ -49,17 +49,27 @@ test("loads deployment case labels and order from case files", async () => {
       {
         filename: "07.rolled-back-after-timeouts.json",
         index: 7,
-        description: "Rolled back - Subnet terus timeout sampai retry habis",
+        description: "Rollback failed - Subnet terus timeout sampai retry habis",
       },
       {
         filename: "08.rolled-back-after-delays.json",
         index: 8,
-        description: "Rolled back - Subnet terus delay sampai retry habis",
+        description: "Rollback failed - Subnet terus delay sampai retry habis",
       },
       {
         filename: "09.rolled-back-after-jobstatus-2.json",
         index: 9,
         description: "Rolled back - Subnet terus mendapat jobstatus 2 sampai retry habis",
+      },
+      {
+        filename: "10.rolled-back-after-acl-rule-failure.json",
+        index: 10,
+        description: "Rolled back - Create ACL rule gagal tanpa public IP",
+      },
+      {
+        filename: "11.rolled-back-after-static-nat-failure.json",
+        index: 11,
+        description: "Rolled back - Create static NAT gagal dengan public IP",
       },
     ],
   );

@@ -58,8 +58,8 @@ test("resolves separate stored DAGs with and without public IP", async () => {
     dependsOn: [],
     input: {},
     apiControl: { delay: 0, timeout: 0, result: 1 },
-    maxRetries: 1,
-    maxRollbackRetries: 0,
+    maxRetries: 4,
+    maxRollbackRetries: 4,
     maxTimeout: 30_000,
   });
   assert.deepEqual(withPublicIp.at(-1)?.dependsOn, ["vm", "public-ip"]);
@@ -87,33 +87,33 @@ test("loads the focused deployment cases", async () => {
   const rollbackStatusCase = await loadCloudDeploymentCase(
     join(casesDirectory, "09.rolled-back-after-jobstatus-2.json"),
   );
+  const rollbackAclRuleCase = await loadCloudDeploymentCase(
+    join(casesDirectory, "10.rolled-back-after-acl-rule-failure.json"),
+  );
+  const rollbackStaticNatCase = await loadCloudDeploymentCase(
+    join(casesDirectory, "11.rolled-back-after-static-nat-failure.json"),
+  );
   assert.deepEqual(timeoutCase.steps["acl-rule"]?.apiControl, {
-    timeoutSequence: [40, 40, 0],
+    timeoutSequence: [40, 40, 0, 0, 0],
   });
-  assert.deepEqual(timeoutCase.steps["acl-rule"]?.config, {
-    maxRetries: 2,
-  });
+  assert.equal(timeoutCase.defaults?.config?.maxRetries, 4);
   assert.equal(timeoutCase.defaults?.config?.maxTimeout, 30_000);
   assert.deepEqual(delayCase.steps["acl-rule"]?.apiControl, {
-    delaySequence: [40, 40, 0],
+    delaySequence: [40, 40, 0, 0, 0],
   });
-  assert.deepEqual(delayCase.steps["acl-rule"]?.config, {
-    maxRetries: 2,
-  });
+  assert.equal(delayCase.defaults?.config?.maxRetries, 4);
   assert.equal(delayCase.defaults?.config?.maxTimeout, 30_000);
   assert.deepEqual(retryStatusCase.steps["acl-rule"]?.apiControl, {
-    resultSequence: [2, 1],
+    resultSequence: [2, 1, 1, 1, 1],
   });
-  assert.deepEqual(retryStatusCase.steps["acl-rule"]?.config, {
-    maxRetries: 1,
-  });
+  assert.equal(retryStatusCase.defaults?.config?.maxRetries, 4);
   assert.deepEqual(
     resolveJobCase(
       await loadDeployVmDefinition(retryStatusCase.jobId),
       retryStatusCase,
       definitionSteps,
     ).find((job) => job.id === "acl-rule")?.apiControl,
-    { delay: 0, timeout: 0, result: 1, resultSequence: [2, 1] },
+    { delay: 0, timeout: 0, result: 1, resultSequence: [2, 1, 1, 1, 1] },
   );
   assert.deepEqual(
     Object.keys(parallelAclCase.steps["acl-rule"]?.instances ?? {}),
@@ -129,22 +129,36 @@ test("loads the focused deployment cases", async () => {
   );
   assert.deepEqual(rollbackTimeoutCase.steps.subnet?.apiControl, {
     timeoutSequence: [2, 2, 2],
+    result: 2,
   });
   assert.deepEqual(rollbackDelayCase.steps.subnet?.apiControl, {
-    delaySequence: [2, 2, 2],
+    delaySequence: [40, 40, 40, 40, 40],
+    result: 2,
   });
   assert.deepEqual(rollbackStatusCase.steps.subnet?.apiControl, {
-    resultSequence: [2, 2, 2],
+    timeout: 30_000,
+    resultSequence: [2, 2, 2, 2, 2],
   });
-  for (const deploymentCase of [
-    rollbackTimeoutCase,
-    rollbackDelayCase,
-    rollbackStatusCase,
-  ]) {
-    assert.equal(deploymentCase.steps.subnet?.config?.maxRetries, 2);
+  assert.equal(rollbackAclRuleCase.jobId, "deploy-vm-without-public-ip");
+  assert.deepEqual(rollbackAclRuleCase.steps["acl-rule"]?.apiControl, { result: 2 });
+  assert.equal(rollbackAclRuleCase.defaults?.config?.maxRollbackRetries, 4);
+  assert.equal(rollbackStaticNatCase.jobId, "deploy-vm-with-public-ip");
+  assert.deepEqual(rollbackStaticNatCase.steps["static-nat"]?.apiControl, { result: 2 });
+  assert.equal(rollbackStaticNatCase.defaults?.config?.maxRollbackRetries, 4);
+  assert.deepEqual(rollbackAclRuleCase.steps.vm?.apiControl, {
+    rollbackResultSequence: [2, 2, 1],
+  });
+  assert.deepEqual(rollbackStaticNatCase.steps.vm?.apiControl, {
+    rollbackResultSequence: [2, 2, 2, 2, 1],
+  });
+  assert.equal(rollbackStaticNatCase.steps.vm?.config?.maxRollbackRetries, 4);
+  for (const deploymentCase of [rollbackTimeoutCase, rollbackDelayCase, rollbackStatusCase]) {
     assert.equal(deploymentCase.defaults?.config?.maxTimeout, 30_000);
     assert.equal(deploymentCase.steps.subnet?.config?.maxTimeout, 1_000);
   }
+  assert.equal(rollbackTimeoutCase.steps.subnet?.config?.maxRetries, 2);
+  assert.equal(rollbackDelayCase.defaults?.config?.maxRetries, 4);
+  assert.equal(rollbackStatusCase.defaults?.config?.maxRetries, 4);
 
   assert.deepEqual(
     (await listCloudDeploymentCases(casesDirectory))
@@ -183,17 +197,27 @@ test("loads the focused deployment cases", async () => {
       {
         filename: "07.rolled-back-after-timeouts.json",
         index: 7,
-        description: "Rolled back - Subnet terus timeout sampai retry habis",
+        description: "Rollback failed - Subnet terus timeout sampai retry habis",
       },
       {
         filename: "08.rolled-back-after-delays.json",
         index: 8,
-        description: "Rolled back - Subnet terus delay sampai retry habis",
+        description: "Rollback failed - Subnet terus delay sampai retry habis",
       },
       {
         filename: "09.rolled-back-after-jobstatus-2.json",
         index: 9,
         description: "Rolled back - Subnet terus mendapat jobstatus 2 sampai retry habis",
+      },
+      {
+        filename: "10.rolled-back-after-acl-rule-failure.json",
+        index: 10,
+        description: "Rolled back - Create ACL rule gagal tanpa public IP",
+      },
+      {
+        filename: "11.rolled-back-after-static-nat-failure.json",
+        index: 11,
+        description: "Rolled back - Create static NAT gagal dengan public IP",
       },
     ],
   );
@@ -396,13 +420,13 @@ test("timing sequence cases succeed after two retries", async () => {
 });
 
 test("failure sequence cases roll back after all retries are exhausted", async () => {
-  const filenames = [
-    "07.rolled-back-after-timeouts.json",
-    "08.rolled-back-after-delays.json",
-    "09.rolled-back-after-jobstatus-2.json",
+  const cases = [
+    { filename: "07.rolled-back-after-timeouts.json", expectedAttempts: 3 },
+    { filename: "08.rolled-back-after-delays.json", expectedAttempts: 5 },
+    { filename: "09.rolled-back-after-jobstatus-2.json", expectedAttempts: 5 },
   ];
 
-  for (const filename of filenames) {
+  for (const { filename, expectedAttempts } of cases) {
     const api = await startFakeApi();
     const client = new FakeCloudStackClient({ baseUrl: api.baseUrl });
     const orchestrator = new DeploymentOrchestrator({
@@ -422,8 +446,60 @@ test("failure sequence cases roll back after all retries are exhausted", async (
       assert.equal(states.vpc, "ROLLED_BACK", filename);
       assert.equal(
         result.jobs.find((job) => job.jobId === "subnet")?.attempt,
-        3,
+        expectedAttempts,
         filename,
+      );
+    } finally {
+      await orchestrator.close();
+      await api.close();
+    }
+  }
+});
+
+test("API failure cases roll back deployments with and without public IP", async () => {
+  const cases = [
+    {
+      filename: "10.rolled-back-after-acl-rule-failure.json",
+      failedJobId: "acl-rule",
+      failedCommand: "createNetworkACL",
+    },
+    {
+      filename: "11.rolled-back-after-static-nat-failure.json",
+      failedJobId: "static-nat",
+      failedCommand: "enableStaticNat",
+    },
+  ] as const;
+
+  for (const failureCase of cases) {
+    const api = await startFakeApi();
+    const client = new FakeCloudStackClient({ baseUrl: api.baseUrl });
+    const orchestrator = new DeploymentOrchestrator({
+      databasePath: ":memory:",
+      deploymentSteps: createDeploymentSteps(client),
+    });
+
+    try {
+      const deploymentCase = await loadCloudDeploymentCase(
+        join(casesDirectory, failureCase.filename),
+      );
+      const result = await orchestrator.deployCase(deploymentCase);
+      const states = Object.fromEntries(result.jobs.map((job) => [job.jobId, job.status]));
+      const failedRequests = api.requests.filter(
+        (url) => url.searchParams.get("command") === failureCase.failedCommand,
+      );
+
+      assert.equal(result.jobRun.status, "ROLLED_BACK", failureCase.filename);
+      assert.equal(states[failureCase.failedJobId], "FAILED", failureCase.filename);
+      assert.equal(states.vpc, "ROLLED_BACK", failureCase.filename);
+      assert.equal(
+        result.jobs.find((job) => job.jobId === failureCase.failedJobId)?.attempt,
+        5,
+        failureCase.filename,
+      );
+      assert.deepEqual(
+        failedRequests.map((url) => url.searchParams.get("result")),
+        ["2", "2", "2", "2", "2"],
+        failureCase.filename,
       );
     } finally {
       await orchestrator.close();

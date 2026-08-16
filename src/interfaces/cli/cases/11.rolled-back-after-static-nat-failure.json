@@ -1,6 +1,6 @@
 {
-  "description": "Rolled back - Subnet terus mendapat jobstatus 2 sampai retry habis",
-  "jobId": "deploy-vm-without-public-ip",
+  "description": "Rolled back - Create static NAT gagal dengan public IP",
+  "jobId": "deploy-vm-with-public-ip",
   "defaults": {
     "apiControl": {
       "delay": 0,
@@ -25,13 +25,6 @@
         "name": "wowdev-subnet",
         "gateway": "10.20.1.1",
         "netmask": "255.255.255.0"
-      },
-      "apiControl": {
-        "timeout": 30000,
-        "resultSequence": [2, 2, 2, 2, 2]
-      },
-      "config": {
-        "maxTimeout": 1000
       }
     },
     "acl-list": {
@@ -58,9 +51,21 @@
         "serviceOfferingId": "offering-1",
         "templateId": "template-1"
       },
+      "apiControl": {
+        "rollbackResultSequence": [2, 2, 1]
+      },
       "config": {
         "maxRetries": 2,
         "maxRollbackRetries": 2
+      }
+    },
+    "public-ip": {
+      "input": {}
+    },
+    "static-nat": {
+      "input": {},
+      "apiControl": {
+        "result": 2
       }
     }
   }

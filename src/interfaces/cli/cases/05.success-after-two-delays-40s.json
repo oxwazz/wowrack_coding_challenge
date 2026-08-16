@@ -8,8 +8,8 @@
       "result": 1
     },
     "config": {
-      "maxRetries": 1,
-      "maxRollbackRetries": 0,
+      "maxRetries": 4,
+      "maxRollbackRetries": 4,
       "maxTimeout": 30000
     }
   },
@@ -42,10 +42,7 @@
         "endPort": 22
       },
       "apiControl": {
-        "delaySequence": [40, 40, 0]
-      },
-      "config": {
-        "maxRetries": 2
+        "delaySequence": [40, 40, 0, 0, 0]
       }
     },
     "attach-acl": {
@@ -56,6 +53,10 @@
         "name": "wowdev-vm",
         "serviceOfferingId": "offering-1",
         "templateId": "template-1"
+      },
+      "config": {
+        "maxRetries": 2,
+        "maxRollbackRetries": 2
       }
     }
   }
