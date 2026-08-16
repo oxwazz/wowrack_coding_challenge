@@ -2,6 +2,7 @@ import type { OrchestratorStore } from "../database/store.js";
 import type { JobRunResult, JobStatus } from "../types.js";
 import type { JobExecutionOutcome, JobExecutor } from "./job-executor.js";
 import { rollbackSuccessfulJobs } from "./rollback.js";
+import { maxTimeoutToMilliseconds } from "./timeout.js";
 
 type RunningJob = Promise<{ jobId: string; outcome: JobExecutionOutcome }>;
 
@@ -12,7 +13,7 @@ export class Scheduler {
     private readonly executor: JobExecutor,
   ) {}
 
-  async run(jobRunId: string, timeoutMs?: number): Promise<JobRunResult> {
+  async run(jobRunId: string, maxTimeout?: number): Promise<JobRunResult> {
     const jobRun = await this.store.getJobRun(jobRunId);
     if (jobRun.status !== "PENDING") {
       throw new Error(`Job run ${jobRunId} cannot be started: ${jobRun.status}`);
@@ -69,7 +70,9 @@ export class Scheduler {
       while (failedBy === undefined && ready.length > 0) {
         const jobId = ready.shift()!;
         const controller = new AbortController();
-        const jobTimeoutMs = definitionsById.get(jobId)?.maxTimeout ?? timeoutMs;
+        const jobTimeoutMs = maxTimeoutToMilliseconds(
+          definitionsById.get(jobId)?.maxTimeout ?? maxTimeout,
+        );
         const result = this.executor.execute(jobRunId, jobId, controller.signal, jobTimeoutMs)
           .then((outcome) => ({ jobId, outcome }));
         running.set(jobId, { controller, result });
@@ -101,7 +104,7 @@ export class Scheduler {
         this.executor,
         jobRunId,
         definitions,
-        timeoutMs,
+        maxTimeout,
       );
     }
     return {

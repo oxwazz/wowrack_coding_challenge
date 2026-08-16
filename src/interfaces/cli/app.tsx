@@ -390,7 +390,7 @@ function Confirm({
 }
 
 function formatMaxTimeout(maxTimeout: number | undefined): string {
-  return maxTimeout === undefined ? "-" : `${maxTimeout} ms`;
+  return maxTimeout === undefined ? "-" : `${maxTimeout} detik`;
 }
 
 /** Creates, executes, and periodically refreshes the live state of a new job run. */

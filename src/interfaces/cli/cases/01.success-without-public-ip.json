@@ -10,7 +10,7 @@
     "config": {
       "maxRetries": 4,
       "maxRollbackRetries": 4,
-      "maxTimeout": 30000
+      "maxTimeout": 30
     }
   },
   "steps": {

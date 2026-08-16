@@ -198,7 +198,7 @@ test("applies a job-specific execution timeout before the orchestrator default",
 
   try {
     const result = await orchestrator.deploy([
-      { id: "slow", type: "slow", dependsOn: [], maxTimeout: 5 },
+      { id: "slow", type: "slow", dependsOn: [], maxTimeout: 0.005 },
     ]);
     assert.equal(result.jobRun.status, "ROLLED_BACK");
     assert.equal(result.jobs[0]?.status, "FAILED");
@@ -232,7 +232,7 @@ test("applies a successful job's timeout to its rollback attempts", async () => 
 
   try {
     const result = await orchestrator.deploy([
-      { id: "resource", type: "resource", dependsOn: [], maxTimeout: 5 },
+      { id: "resource", type: "resource", dependsOn: [], maxTimeout: 0.005 },
       { id: "failure", type: "failure", dependsOn: ["resource"] },
     ]);
     const resource = result.jobs.find((job) => job.jobId === "resource");

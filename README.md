@@ -114,7 +114,7 @@ pada sebuah step akan meng-override bagian yang diperlukan:
     "config": {
       "maxRetries": 1,
       "maxRollbackRetries": 0,
-      "maxTimeout": 60000
+      "maxTimeout": 60
     }
   },
   "steps": {
@@ -209,16 +209,16 @@ melalui `config.maxTimeout`:
 
 ```json
 {
-  "defaults": { "config": { "maxTimeout": 30000 } },
+  "defaults": { "config": { "maxTimeout": 30 } },
   "steps": {
-    "subnet": { "config": { "maxTimeout": 1000 } }
+    "subnet": { "config": { "maxTimeout": 1 } }
   }
 }
 ```
 
 Urutan prioritasnya adalah named instance, step, defaults, lalu konfigurasi orchestrator.
 `maxTimeout` berlaku untuk setiap attempt eksekusi dan rollback serta ditulis dalam
-milidetik. Timeout menghentikan client menunggu, tetapi tidak menjamin operasi remote sudah
+detik. Nilai desimal juga didukung, misalnya `0.5` untuk 500 milidetik. Timeout menghentikan client menunggu, tetapi tidak menjamin operasi remote sudah
 berhenti.
 
 ## Request CloudStack

@@ -49,12 +49,12 @@ test("loads deployment case labels and order from case files", async () => {
       {
         filename: "07.rolled-back-after-timeouts.json",
         index: 7,
-        description: "Rollback failed - Subnet terus timeout sampai retry habis",
+        description: "Rolled back - Subnet terus timeout sampai retry habis",
       },
       {
         filename: "08.rolled-back-after-delays.json",
         index: 8,
-        description: "Rollback failed - Subnet terus delay sampai retry habis",
+        description: "Rolled back - Subnet terus delay sampai retry habis",
       },
       {
         filename: "09.rolled-back-after-jobstatus-2.json",

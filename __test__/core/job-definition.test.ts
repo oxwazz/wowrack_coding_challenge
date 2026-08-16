@@ -22,13 +22,13 @@ test("resolveJobCase builds deployment steps and applies case configuration", ()
       jobId: "deploy",
       defaults: {
         apiControl: { delay: 0, timeout: 30, result: 1 },
-        config: { maxRetries: 1, maxTimeout: 30_000 },
+        config: { maxRetries: 1, maxTimeout: 30 },
       },
       steps: {
         vpc: {
           input: { cidr: "10.0.0.0/16" },
           apiControl: { delay: 5 },
-          config: { maxTimeout: 5_000 },
+          config: { maxTimeout: 5 },
         },
         subnet: { config: { maxRetries: 0 } },
       },
@@ -44,7 +44,7 @@ test("resolveJobCase builds deployment steps and applies case configuration", ()
       input: { cidr: "10.0.0.0/16" },
       apiControl: { delay: 5, timeout: 30, result: 1 },
       maxRetries: 1,
-      maxTimeout: 5_000,
+      maxTimeout: 5,
     },
     {
       id: "subnet",
@@ -52,7 +52,7 @@ test("resolveJobCase builds deployment steps and applies case configuration", ()
       dependsOn: ["vpc"],
       apiControl: { delay: 0, timeout: 30, result: 1 },
       maxRetries: 0,
-      maxTimeout: 30_000,
+      maxTimeout: 30,
     },
   ]);
 });
@@ -66,7 +66,7 @@ test("resolveJobCase expands named fan-out instances into independent runtime jo
     },
     {
       jobId: "acl",
-      defaults: { config: { maxRetries: 1, maxTimeout: 40_000 } },
+      defaults: { config: { maxRetries: 1, maxTimeout: 40 } },
       steps: {
         vpc: { input: { cidr: "10.0.0.0/16" } },
         "acl-list": { input: { name: "main" } },
@@ -78,7 +78,7 @@ test("resolveJobCase expands named fan-out instances into independent runtime jo
             },
             http: {
               input: { protocol: "tcp", startPort: 80, endPort: 80 },
-              config: { maxRetries: 3, maxTimeout: 10_000 },
+              config: { maxRetries: 3, maxTimeout: 10 },
             },
           },
         },
@@ -95,7 +95,7 @@ test("resolveJobCase expands named fan-out instances into independent runtime jo
       input: { protocol: "tcp", startPort: 22, endPort: 22 },
       apiControl: { delay: 0 },
       maxRetries: 1,
-      maxTimeout: 40_000,
+      maxTimeout: 40,
     },
     {
       id: "acl-rule:http",
@@ -104,7 +104,7 @@ test("resolveJobCase expands named fan-out instances into independent runtime jo
       input: { protocol: "tcp", startPort: 80, endPort: 80 },
       apiControl: { delay: 0 },
       maxRetries: 3,
-      maxTimeout: 10_000,
+      maxTimeout: 10,
     },
   ]);
 });

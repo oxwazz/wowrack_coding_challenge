@@ -10,7 +10,7 @@
     "config": {
       "maxRetries": 4,
       "maxRollbackRetries": 4,
-      "maxTimeout": 30000
+      "maxTimeout": 30
     }
   },
   "steps": {
@@ -18,7 +18,6 @@
       "input": {
         "cidr": "10.20.0.0/16",
         "name": "wowdev-vpc"
-
       },
       "apiControl": {
         "rollbackResultSequence": [2, 1, 1, 1, 1]

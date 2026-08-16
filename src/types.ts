@@ -18,7 +18,7 @@ export interface JobDefinition {
   maxRetries?: number;
   /** Number of rollback retries after the first rollback attempt. */
   maxRollbackRetries?: number;
-  /** Timeout in milliseconds for each run or rollback attempt. */
+  /** Timeout in seconds for each run or rollback attempt. */
   maxTimeout?: number;
   /** JSON-serializable handler input persisted with the job. */
   input?: JsonValue;
@@ -60,7 +60,7 @@ export interface JobCaseConfig {
   maxRetries?: number;
   /** Number of rollback retries after the first rollback attempt. */
   maxRollbackRetries?: number;
-  /** Timeout in milliseconds for each run or rollback attempt. */
+  /** Timeout in seconds for each run or rollback attempt. */
   maxTimeout?: number;
 }
 

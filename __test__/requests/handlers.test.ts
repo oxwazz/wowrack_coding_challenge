@@ -60,7 +60,7 @@ test("resolves separate stored DAGs with and without public IP", async () => {
     apiControl: { delay: 0, timeout: 0, result: 1 },
     maxRetries: 4,
     maxRollbackRetries: 4,
-    maxTimeout: 30_000,
+    maxTimeout: 30,
   });
   assert.deepEqual(withPublicIp.at(-1)?.dependsOn, ["vm", "public-ip"]);
 });
@@ -95,16 +95,18 @@ test("loads the focused deployment cases", async () => {
   );
   assert.deepEqual(timeoutCase.steps["acl-rule"]?.apiControl, {
     timeoutSequence: [40, 40, 0, 0, 0],
+    resultSequence: [2, 2, 1, 1, 1],
   });
   assert.equal(timeoutCase.defaults?.config?.maxRetries, 4);
-  assert.equal(timeoutCase.defaults?.config?.maxTimeout, 30_000);
+  assert.equal(timeoutCase.defaults?.config?.maxTimeout, 30);
   assert.deepEqual(delayCase.steps["acl-rule"]?.apiControl, {
     delaySequence: [40, 40, 0, 0, 0],
+    resultSequence: [2, 2, 1, 1, 1],
   });
   assert.equal(delayCase.defaults?.config?.maxRetries, 4);
-  assert.equal(delayCase.defaults?.config?.maxTimeout, 30_000);
+  assert.equal(delayCase.defaults?.config?.maxTimeout, 30);
   assert.deepEqual(retryStatusCase.steps["acl-rule"]?.apiControl, {
-    resultSequence: [2, 1, 1, 1, 1],
+    resultSequence: [2, 2, 1, 1, 1],
   });
   assert.equal(retryStatusCase.defaults?.config?.maxRetries, 4);
   assert.deepEqual(
@@ -113,7 +115,7 @@ test("loads the focused deployment cases", async () => {
       retryStatusCase,
       definitionSteps,
     ).find((job) => job.id === "acl-rule")?.apiControl,
-    { delay: 0, timeout: 0, result: 1, resultSequence: [2, 1, 1, 1, 1] },
+    { delay: 0, timeout: 0, result: 1, resultSequence: [2, 2, 1, 1, 1] },
   );
   assert.deepEqual(
     Object.keys(parallelAclCase.steps["acl-rule"]?.instances ?? {}),
@@ -128,15 +130,15 @@ test("loads the focused deployment cases", async () => {
     10,
   );
   assert.deepEqual(rollbackTimeoutCase.steps.subnet?.apiControl, {
-    timeoutSequence: [2, 2, 2],
-    result: 2,
+    timeoutSequence: [40, 40, 40, 40, 40],
+    resultSequence: [2, 2, 2, 2, 2],
   });
   assert.deepEqual(rollbackDelayCase.steps.subnet?.apiControl, {
     delaySequence: [40, 40, 40, 40, 40],
-    result: 2,
+    resultSequence: [2, 2, 2, 2, 2],
   });
   assert.deepEqual(rollbackStatusCase.steps.subnet?.apiControl, {
-    timeout: 30_000,
+    timeout: 2,
     resultSequence: [2, 2, 2, 2, 2],
   });
   assert.equal(rollbackAclRuleCase.jobId, "deploy-vm-without-public-ip");
@@ -149,16 +151,13 @@ test("loads the focused deployment cases", async () => {
     rollbackResultSequence: [2, 2, 1],
   });
   assert.deepEqual(rollbackStaticNatCase.steps.vm?.apiControl, {
-    rollbackResultSequence: [2, 2, 2, 2, 1],
+    rollbackResultSequence: [2, 2, 1],
   });
-  assert.equal(rollbackStaticNatCase.steps.vm?.config?.maxRollbackRetries, 4);
+  assert.equal(rollbackStaticNatCase.steps.vm?.config?.maxRollbackRetries, 2);
   for (const deploymentCase of [rollbackTimeoutCase, rollbackDelayCase, rollbackStatusCase]) {
-    assert.equal(deploymentCase.defaults?.config?.maxTimeout, 30_000);
-    assert.equal(deploymentCase.steps.subnet?.config?.maxTimeout, 1_000);
+    assert.equal(deploymentCase.defaults?.config?.maxTimeout, 30);
+    assert.equal(deploymentCase.defaults?.config?.maxRetries, 4);
   }
-  assert.equal(rollbackTimeoutCase.steps.subnet?.config?.maxRetries, 2);
-  assert.equal(rollbackDelayCase.defaults?.config?.maxRetries, 4);
-  assert.equal(rollbackStatusCase.defaults?.config?.maxRetries, 4);
 
   assert.deepEqual(
     (await listCloudDeploymentCases(casesDirectory))
@@ -197,12 +196,12 @@ test("loads the focused deployment cases", async () => {
       {
         filename: "07.rolled-back-after-timeouts.json",
         index: 7,
-        description: "Rollback failed - Subnet terus timeout sampai retry habis",
+        description: "Rolled back - Subnet terus timeout sampai retry habis",
       },
       {
         filename: "08.rolled-back-after-delays.json",
         index: 8,
-        description: "Rollback failed - Subnet terus delay sampai retry habis",
+        description: "Rolled back - Subnet terus delay sampai retry habis",
       },
       {
         filename: "09.rolled-back-after-jobstatus-2.json",
@@ -344,7 +343,7 @@ test("executes every API command required for a deployment with public IP", asyn
   }
 });
 
-test("demo case succeeds when the first retry is executed", async () => {
+test("demo case succeeds after two retries", async () => {
   const api = await startFakeApi();
   const client = new FakeCloudStackClient({ baseUrl: api.baseUrl });
   const orchestrator = new DeploymentOrchestrator({
@@ -364,10 +363,10 @@ test("demo case succeeds when the first retry is executed", async () => {
 
     assert.equal(result.jobRun.status, "SUCCESS");
     assert.equal(aclRule?.status, "SUCCESS");
-    assert.equal(aclRule?.attempt, 2);
+    assert.equal(aclRule?.attempt, 3);
     assert.deepEqual(
       aclRequests.map((url) => url.searchParams.get("result")),
-      ["2", "1"],
+      ["2", "2", "1"],
     );
   } finally {
     await orchestrator.close();
@@ -421,7 +420,7 @@ test("timing sequence cases succeed after two retries", async () => {
 
 test("failure sequence cases roll back after all retries are exhausted", async () => {
   const cases = [
-    { filename: "07.rolled-back-after-timeouts.json", expectedAttempts: 3 },
+    { filename: "07.rolled-back-after-timeouts.json", expectedAttempts: 5 },
     { filename: "08.rolled-back-after-delays.json", expectedAttempts: 5 },
     { filename: "09.rolled-back-after-jobstatus-2.json", expectedAttempts: 5 },
   ];
@@ -525,7 +524,7 @@ test("deployment case overrides the orchestrator attempt timeout", async () => {
     deploymentCase.defaults.config = {
       ...deploymentCase.defaults.config,
       maxRetries: 0,
-      maxTimeout: 100,
+      maxTimeout: 0.1,
     };
     deploymentCase.steps.subnet!.apiControl = { delay: 0.02 };
 
