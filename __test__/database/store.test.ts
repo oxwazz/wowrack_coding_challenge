@@ -9,7 +9,13 @@ test("OrchestratorStore rebuilds state and dependencies from deployment logs", a
     assert.equal(storedDefinition.name, "Deploy VM tanpa Public IP");
 
     await store.createJobRun("store-test", [
-      { id: "vpc", type: "test", dependsOn: [], input: { cidr: "10.0.0.0/16" } },
+      {
+        id: "vpc",
+        type: "test",
+        dependsOn: [],
+        input: { cidr: "10.0.0.0/16" },
+        asyncJobPollInterval: 1,
+      },
       { id: "vm", type: "test", dependsOn: ["vpc"], maxRetries: 2 },
     ]);
     assert.deepEqual(await store.getJobDefinitions("store-test"), [
@@ -19,6 +25,7 @@ test("OrchestratorStore rebuilds state and dependencies from deployment logs", a
         dependsOn: [],
         maxRetries: 0,
         input: { cidr: "10.0.0.0/16" },
+        asyncJobPollInterval: 1,
       },
       {
         id: "vm",

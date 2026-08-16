@@ -1,4 +1,4 @@
-import { errorMessage } from "../utils.js";
+import { errorMessage, sleep } from "../utils.js";
 import type {
   ApiParameters,
   FakeCloudStackClientOptions,
@@ -180,6 +180,7 @@ export class FakeCloudStackClient {
    *
    * @param jobId - ID returned by `startAsyncJob`.
    * @param signal - Optional cancellation signal used for each polling request.
+   * @param asyncJobPollInterval - Delay in seconds after a pending response.
    * @returns The asynchronous job's successful result object.
    * @throws `FakeCloudStackApiError` when CloudStack reports status `2`.
    *
@@ -192,7 +193,11 @@ export class FakeCloudStackClient {
   async waitForAsyncJob(
     jobId: string,
     signal?: AbortSignal,
+    asyncJobPollInterval = 0,
   ): Promise<JsonObject> {
+    if (!Number.isFinite(asyncJobPollInterval) || asyncJobPollInterval < 0) {
+      throw new Error("asyncJobPollInterval must be a non-negative number in seconds");
+    }
     while (true) {
       const job = await this.queryAsyncJob(jobId, signal);
       // CloudStack uses 0 for pending, 1 for success, and 2 for failure.
@@ -212,6 +217,7 @@ export class FakeCloudStackClient {
           true,
         );
       }
+      await sleep(asyncJobPollInterval * 1_000, signal);
     }
   }
 }

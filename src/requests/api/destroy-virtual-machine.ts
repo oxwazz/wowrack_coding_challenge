@@ -1,5 +1,5 @@
 import type { FakeCloudStackClient } from "../client.js";
-import type { ApiControlQuery, ApiOperationSpec } from "./shared.js";
+import type { ApiControlQuery, ApiOperationSpec, AsyncJobPollingOptions } from "./shared.js";
 import { runAsyncSuccess } from "./shared.js";
 
 export const destroyVirtualMachineApi = {
@@ -8,7 +8,7 @@ export const destroyVirtualMachineApi = {
 
 export type DestroyVirtualMachineQuery = ApiControlQuery & Readonly<{ id: string }>;
 
-export interface DestroyVirtualMachineProps {
+export interface DestroyVirtualMachineProps extends AsyncJobPollingOptions {
   client: FakeCloudStackClient;
   query: DestroyVirtualMachineQuery;
   signal?: AbortSignal | undefined;
@@ -24,5 +24,6 @@ export function destroyVirtualMachine(
     destroyVirtualMachineApi.command,
     props.query,
     props.signal,
+    props.asyncJobPollInterval,
   );
 }

@@ -57,6 +57,7 @@ export function createDeploymentSteps(
             ...apiControl(context),
           },
           signal: context.signal,
+          ...asyncJobPolling(context),
         });
       },
       /** Deletes the VPC created by this step. */
@@ -69,6 +70,7 @@ export function createDeploymentSteps(
             ...rollbackApiControl(context),
           },
           signal: context.signal,
+          ...asyncJobPolling(context),
         });
       },
     },
@@ -102,6 +104,7 @@ export function createDeploymentSteps(
             ...rollbackApiControl(context),
           },
           signal: context.signal,
+          ...asyncJobPolling(context),
         });
       },
     },
@@ -121,6 +124,7 @@ export function createDeploymentSteps(
             ...apiControl(context),
           },
           signal: context.signal,
+          ...asyncJobPolling(context),
         });
       },
     },
@@ -145,6 +149,7 @@ export function createDeploymentSteps(
             ...apiControl(context),
           },
           signal: context.signal,
+          ...asyncJobPolling(context),
         });
       },
     },
@@ -162,6 +167,7 @@ export function createDeploymentSteps(
           client,
           query: { aclid: aclListId, networkid: networkId, ...apiControl(context) },
           signal: context.signal,
+          ...asyncJobPolling(context),
         });
         return { success: true, aclListId, networkId };
       },
@@ -184,6 +190,7 @@ export function createDeploymentSteps(
             ...apiControl(context),
           },
           signal: context.signal,
+          ...asyncJobPolling(context),
         });
       },
       /** Destroys the virtual machine created by this step. */
@@ -196,6 +203,7 @@ export function createDeploymentSteps(
             ...rollbackApiControl(context),
           },
           signal: context.signal,
+          ...asyncJobPolling(context),
         });
       },
     },
@@ -305,6 +313,15 @@ function apiControl(
     timeout: numberFromSequence(control.timeoutSequence, context.attempt)
       ?? (typeof control.timeout === "number" ? control.timeout : undefined),
   };
+}
+
+/** Passes case-configured asynchronous polling behavior to async API operations. */
+function asyncJobPolling(
+  context: Pick<JobRunContext | JobRollbackContext, "asyncJobPollInterval">,
+) {
+  return context.asyncJobPollInterval === undefined
+    ? {}
+    : { asyncJobPollInterval: context.asyncJobPollInterval };
 }
 
 /** Extracts the fake-API result for one rollback attempt. */

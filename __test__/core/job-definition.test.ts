@@ -22,13 +22,13 @@ test("resolveJobCase builds deployment steps and applies case configuration", ()
       jobId: "deploy",
       defaults: {
         apiControl: { delay: 0, timeout: 30, result: 1 },
-        config: { maxRetries: 1, maxTimeout: 30 },
+        config: { maxRetries: 1, maxTimeout: 30, asyncJobPollInterval: 2 },
       },
       steps: {
         vpc: {
           input: { cidr: "10.0.0.0/16" },
           apiControl: { delay: 5 },
-          config: { maxTimeout: 5 },
+          config: { maxTimeout: 5, asyncJobPollInterval: 0.5 },
         },
         subnet: { config: { maxRetries: 0 } },
       },
@@ -45,6 +45,7 @@ test("resolveJobCase builds deployment steps and applies case configuration", ()
       apiControl: { delay: 5, timeout: 30, result: 1 },
       maxRetries: 1,
       maxTimeout: 5,
+      asyncJobPollInterval: 0.5,
     },
     {
       id: "subnet",
@@ -53,6 +54,7 @@ test("resolveJobCase builds deployment steps and applies case configuration", ()
       apiControl: { delay: 0, timeout: 30, result: 1 },
       maxRetries: 0,
       maxTimeout: 30,
+      asyncJobPollInterval: 2,
     },
   ]);
 });
@@ -138,5 +140,20 @@ test("resolveJobCase rejects an invalid step timeout", () => {
       deploymentSteps,
     ),
     /Deployment step vpc config\.maxTimeout must be a non-negative number/,
+  );
+});
+
+test("resolveJobCase rejects an invalid asynchronous poll interval", () => {
+  assert.throws(
+    () => resolveJobCase(
+      definition,
+      {
+        jobId: "deploy",
+        defaults: { config: { asyncJobPollInterval: -1 } },
+        steps: { vpc: {} },
+      },
+      deploymentSteps,
+    ),
+    /Deployment step vpc config\.asyncJobPollInterval must be a non-negative number/,
   );
 });

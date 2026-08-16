@@ -26,6 +26,44 @@ test("runAsync starts a job and returns its terminal result", async () => {
   );
 });
 
+test("runAsync applies asyncJobPollInterval locally", async () => {
+  let startedWith: Record<string, unknown> | undefined;
+  let waitedWith: number | undefined;
+  const client = {
+    async startAsyncJob(_command: string, parameters: Record<string, unknown>) {
+      startedWith = parameters;
+      return "job-poll";
+    },
+    async waitForAsyncJob(_jobId: string, _signal: AbortSignal, interval: number) {
+      waitedWith = interval;
+      return { id: "resource-poll" };
+    },
+  } as unknown as FakeCloudStackClient;
+
+  assert.deepEqual(
+    await runAsync(client, "createVpc", { result: 1 }, undefined, 2),
+    { id: "resource-poll" },
+  );
+  assert.deepEqual(startedWith, { result: 1 });
+  assert.equal(waitedWith, 2);
+});
+
+test("runAsync rejects an invalid asyncJobPollInterval before starting a job", async () => {
+  let started = false;
+  const client = {
+    async startAsyncJob() {
+      started = true;
+      return "job-invalid";
+    },
+  } as unknown as FakeCloudStackClient;
+
+  await assert.rejects(
+    () => runAsync(client, "createVpc", {}, undefined, -1),
+    /asyncJobPollInterval must be a non-negative number in seconds/,
+  );
+  assert.equal(started, false);
+});
+
 test("runAsyncObject extracts the requested result object", async () => {
   assert.deepEqual(
     await runAsyncObject(

@@ -75,7 +75,18 @@ function resolveStep(
   const maxTimeout = instance?.config?.maxTimeout
     ?? configured.config?.maxTimeout
     ?? deploymentCase.defaults?.config?.maxTimeout;
+  const asyncJobPollInterval = instance?.config?.asyncJobPollInterval
+    ?? configured.config?.asyncJobPollInterval
+    ?? deploymentCase.defaults?.config?.asyncJobPollInterval;
   validateMaxTimeout(maxTimeout, `Deployment step ${runtimeId} config.maxTimeout`);
+  if (
+    asyncJobPollInterval !== undefined
+    && (!Number.isFinite(asyncJobPollInterval) || asyncJobPollInterval < 0)
+  ) {
+    throw new Error(
+      `Deployment step ${runtimeId} config.asyncJobPollInterval must be a non-negative number in seconds`,
+    );
+  }
   const hasApiControl = deploymentCase.defaults?.apiControl !== undefined
     || configured.apiControl !== undefined
     || instance?.apiControl !== undefined;
@@ -94,5 +105,6 @@ function resolveStep(
     ...(maxRetries === undefined ? {} : { maxRetries }),
     ...(maxRollbackRetries === undefined ? {} : { maxRollbackRetries }),
     ...(maxTimeout === undefined ? {} : { maxTimeout }),
+    ...(asyncJobPollInterval === undefined ? {} : { asyncJobPollInterval }),
   };
 }

@@ -1,5 +1,5 @@
 import type { FakeCloudStackClient } from "../client.js";
-import type { ApiControlQuery, ApiOperationSpec } from "./shared.js";
+import type { ApiControlQuery, ApiOperationSpec, AsyncJobPollingOptions } from "./shared.js";
 import { runAsyncSuccess } from "./shared.js";
 
 export const replaceNetworkAclListApi = {
@@ -11,7 +11,7 @@ export type ReplaceNetworkAclListQuery = ApiControlQuery & Readonly<{
   networkid: string;
 }>;
 
-export interface ReplaceNetworkAclListProps {
+export interface ReplaceNetworkAclListProps extends AsyncJobPollingOptions {
   client: FakeCloudStackClient;
   query: ReplaceNetworkAclListQuery;
   signal?: AbortSignal | undefined;
@@ -27,5 +27,6 @@ export function replaceNetworkAclList(
     replaceNetworkAclListApi.command,
     props.query,
     props.signal,
+    props.asyncJobPollInterval,
   );
 }

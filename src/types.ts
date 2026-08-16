@@ -20,6 +20,8 @@ export interface JobDefinition {
   maxRollbackRetries?: number;
   /** Timeout in seconds for each run or rollback attempt. */
   maxTimeout?: number;
+  /** Delay in seconds between asynchronous job-status polls. */
+  asyncJobPollInterval?: number;
   /** JSON-serializable handler input persisted with the job. */
   input?: JsonValue;
   /** Fake API behavior used by demo cases; kept separate from business input. */
@@ -60,6 +62,8 @@ export interface JobCaseConfig {
   maxRollbackRetries?: number;
   /** Timeout in seconds for each run or rollback attempt. */
   maxTimeout?: number;
+  /** Delay in seconds between asynchronous job-status polls. */
+  asyncJobPollInterval?: number;
 }
 
 export interface JobCaseStepInstance {
@@ -89,6 +93,7 @@ export interface JobStepRunRecord {
   maxRetries: number;
   rollbackAttempt: number;
   maxRollbackRetries: number;
+  asyncJobPollInterval?: number;
   input: JsonValue | null;
   apiControl?: JsonValue;
   result: JsonValue | null;
@@ -126,6 +131,7 @@ export interface JobRunContext {
   attempt: number;
   input: JsonValue | null;
   apiControl?: JsonValue;
+  asyncJobPollInterval?: number;
   dependencyResults: Readonly<Record<string, JsonValue | null>>;
   signal: AbortSignal;
   sleep: (milliseconds: number) => Promise<void>;
@@ -137,6 +143,7 @@ export interface JobRollbackContext {
   attempt: number;
   input: JsonValue | null;
   apiControl?: JsonValue;
+  asyncJobPollInterval?: number;
   result: JsonValue | null;
   signal: AbortSignal;
   sleep: (milliseconds: number) => Promise<void>;

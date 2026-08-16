@@ -1,6 +1,6 @@
 import type { JsonObject } from "../../types.js";
 import type { FakeCloudStackClient } from "../client.js";
-import type { ApiControlQuery, ApiOperationSpec } from "./shared.js";
+import type { ApiControlQuery, ApiOperationSpec, AsyncJobPollingOptions } from "./shared.js";
 import { runAsyncObject } from "./shared.js";
 
 export const deployVirtualMachineApi = {
@@ -15,7 +15,7 @@ export type DeployVirtualMachineQuery = ApiControlQuery & Readonly<{
   name?: string | undefined;
 }>;
 
-export interface DeployVirtualMachineProps {
+export interface DeployVirtualMachineProps extends AsyncJobPollingOptions {
   client: FakeCloudStackClient;
   query: DeployVirtualMachineQuery;
   signal?: AbortSignal | undefined;
@@ -32,6 +32,7 @@ export async function deployVirtualMachine(
     props.query,
     deployVirtualMachineApi.resultKey,
     props.signal,
+    props.asyncJobPollInterval,
   );
   return result as DeployVirtualMachineResult;
 }

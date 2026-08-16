@@ -116,7 +116,8 @@ pada sebuah step akan meng-override bagian yang diperlukan:
     "config": {
       "maxRetries": 1,
       "maxRollbackRetries": 0,
-      "maxTimeout": 60
+      "maxTimeout": 60,
+      "asyncJobPollInterval": 1
     }
   },
   "steps": {
@@ -138,6 +139,9 @@ Pada contoh tersebut, `acl-rule` tetap mewarisi `delay` dan `timeout`, tetapi me
 - `timeoutSequence`: nilai `timeout` per attempt.
 - `result: 1`: request berhasil.
 - `result: 2`: request gagal.
+
+`config.asyncJobPollInterval` mengatur jeda dalam detik antara setiap polling
+asynchronous job. Nilai ini dapat diatur pada `defaults`, step, atau instance.
 
 Step `acl-rule` juga mendukung named instances. Template database tetap memiliki satu
 logical ID `acl-rule`, sedangkan resolver membuat runtime job terpisah untuk setiap instance:

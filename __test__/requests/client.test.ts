@@ -86,6 +86,34 @@ test("waitForAsyncJob polls pending jobs and returns successful results", async 
   assert.equal(query.mock.callCount(), 2);
 });
 
+test("waitForAsyncJob waits between pending job polls", async (t) => {
+  const client = new FakeCloudStackClient({ baseUrl: "https://cloudstack.test/api" });
+  const responses: QueryAsyncJobResult[] = [
+    { jobId: "job-delay", jobStatus: 0, jobResult: {} },
+    { jobId: "job-delay", jobStatus: 1, jobResult: { id: "resource-delay" } },
+  ];
+  const queriedAt: number[] = [];
+  t.mock.method(client, "queryAsyncJob", async () => {
+    queriedAt.push(performance.now());
+    return responses.shift()!;
+  });
+
+  assert.deepEqual(
+    await client.waitForAsyncJob("job-delay", undefined, 0.02),
+    { id: "resource-delay" },
+  );
+  assert.equal(queriedAt.length, 2);
+  assert.ok(queriedAt[1]! - queriedAt[0]! >= 15);
+});
+
+test("waitForAsyncJob validates the asynchronous poll interval", async () => {
+  const client = new FakeCloudStackClient({ baseUrl: "https://cloudstack.test/api" });
+  await assert.rejects(
+    () => client.waitForAsyncJob("job-invalid", undefined, -1),
+    /asyncJobPollInterval must be a non-negative number in seconds/,
+  );
+});
+
 test("waitForAsyncJob throws a structured asynchronous failure", async (t) => {
   const client = new FakeCloudStackClient({ baseUrl: "https://cloudstack.test/api" });
   t.mock.method(client, "queryAsyncJob", async () => ({

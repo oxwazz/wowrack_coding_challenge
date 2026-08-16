@@ -82,6 +82,9 @@ export class JobExecutor {
             attempt,
             input: job.input,
             ...(job.apiControl === undefined ? {} : { apiControl: job.apiControl }),
+            ...(job.asyncJobPollInterval === undefined
+              ? {}
+              : { asyncJobPollInterval: job.asyncJobPollInterval }),
             result: job.result,
             signal,
             sleep: (milliseconds) => sleep(milliseconds, signal),
@@ -113,6 +116,9 @@ export class JobExecutor {
         attempt: job.attempt,
         input: job.input,
         ...(job.apiControl === undefined ? {} : { apiControl: job.apiControl }),
+        ...(job.asyncJobPollInterval === undefined
+          ? {}
+          : { asyncJobPollInterval: job.asyncJobPollInterval }),
         dependencyResults: await this.store.getDependencyResults(job.jobRunId, job.jobId),
         signal: attemptSignal,
         sleep: (milliseconds) => sleep(milliseconds, attemptSignal),

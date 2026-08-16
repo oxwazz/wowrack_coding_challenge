@@ -1,6 +1,6 @@
 import type { JsonObject } from "../../types.js";
 import type { FakeCloudStackClient } from "../client.js";
-import type { ApiControlQuery, ApiOperationSpec } from "./shared.js";
+import type { ApiControlQuery, ApiOperationSpec, AsyncJobPollingOptions } from "./shared.js";
 import { runAsyncObject } from "./shared.js";
 
 export const createVpcApi = {
@@ -13,7 +13,7 @@ export type CreateVpcQuery = ApiControlQuery & Readonly<{
   name?: string | undefined;
 }>;
 
-export interface CreateVpcProps {
+export interface CreateVpcProps extends AsyncJobPollingOptions {
   client: FakeCloudStackClient;
   query: CreateVpcQuery;
   signal?: AbortSignal | undefined;
@@ -28,6 +28,7 @@ export async function createVpc(props: CreateVpcProps): Promise<CreateVpcResult>
     props.query,
     createVpcApi.resultKey,
     props.signal,
+    props.asyncJobPollInterval,
   );
   return result as CreateVpcResult;
 }

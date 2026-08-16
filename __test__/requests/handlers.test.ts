@@ -58,6 +58,7 @@ test("resolves separate stored DAGs with and without public IP", async () => {
     dependsOn: [],
     input: {},
     apiControl: { delay: 0, timeout: 0, result: 1 },
+    asyncJobPollInterval: 1,
     maxRetries: 4,
     maxRollbackRetries: 4,
     maxTimeout: 30,
@@ -109,14 +110,21 @@ test("loads the focused deployment cases", async () => {
     resultSequence: [2, 2, 1, 1, 1],
   });
   assert.equal(retryStatusCase.defaults?.config?.maxRetries, 4);
+  const retryStatusJob = resolveJobCase(
+    await loadDeployVmDefinition(retryStatusCase.jobId),
+    retryStatusCase,
+    definitionSteps,
+  ).find((job) => job.id === "acl-rule");
   assert.deepEqual(
-    resolveJobCase(
-      await loadDeployVmDefinition(retryStatusCase.jobId),
-      retryStatusCase,
-      definitionSteps,
-    ).find((job) => job.id === "acl-rule")?.apiControl,
-    { delay: 0, timeout: 0, result: 1, resultSequence: [2, 2, 1, 1, 1] },
+    retryStatusJob?.apiControl,
+    {
+      delay: 0,
+      timeout: 0,
+      result: 1,
+      resultSequence: [2, 2, 1, 1, 1],
+    },
   );
+  assert.equal(retryStatusJob?.asyncJobPollInterval, 1);
   assert.deepEqual(
     Object.keys(parallelAclCase.steps["acl-rule"]?.instances ?? {}),
     ["ssh", "http", "https", "dns", "icmp"],
@@ -328,6 +336,7 @@ test("executes every API command required for a deployment with public IP", asyn
       assert.equal(request.searchParams.get("delay"), "0");
       assert.equal(request.searchParams.get("timeout"), "0");
       assert.equal(request.searchParams.get("result"), "1");
+      assert.equal(request.searchParams.has("asyncJobPollInterval"), false);
     }
     const deployVm = api.requests.find(
       (url) => url.searchParams.get("command") === "deployVirtualMachine",

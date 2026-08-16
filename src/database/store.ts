@@ -243,6 +243,9 @@ export class OrchestratorStore {
         maxRetries: job.maxRetries ?? 0,
         rollbackAttempt: history.filter((log) => log.status === "ROLLING_BACK").length,
         maxRollbackRetries: job.maxRollbackRetries ?? 0,
+        ...(job.asyncJobPollInterval === undefined
+          ? {}
+          : { asyncJobPollInterval: job.asyncJobPollInterval }),
         input: job.input ?? null,
         ...(job.apiControl === undefined ? {} : { apiControl: job.apiControl }),
         result: latest.result,

@@ -1,6 +1,6 @@
 import type { JsonObject } from "../../types.js";
 import type { FakeCloudStackClient } from "../client.js";
-import type { ApiControlQuery, ApiOperationSpec } from "./shared.js";
+import type { ApiControlQuery, ApiOperationSpec, AsyncJobPollingOptions } from "./shared.js";
 import { runAsyncObject } from "./shared.js";
 
 export const createNetworkAclListApi = {
@@ -13,7 +13,7 @@ export type CreateNetworkAclListQuery = ApiControlQuery & Readonly<{
   name: string;
 }>;
 
-export interface CreateNetworkAclListProps {
+export interface CreateNetworkAclListProps extends AsyncJobPollingOptions {
   client: FakeCloudStackClient;
   query: CreateNetworkAclListQuery;
   signal?: AbortSignal | undefined;
@@ -30,6 +30,7 @@ export async function createNetworkAclList(
     props.query,
     createNetworkAclListApi.resultKey,
     props.signal,
+    props.asyncJobPollInterval,
   );
   return result as CreateNetworkAclListResult;
 }

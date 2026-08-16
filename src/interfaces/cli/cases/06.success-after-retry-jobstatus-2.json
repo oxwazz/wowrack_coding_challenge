@@ -10,7 +10,8 @@
     "config": {
       "maxRetries": 4,
       "maxRollbackRetries": 4,
-      "maxTimeout": 30
+      "maxTimeout": 30,
+      "asyncJobPollInterval": 1
     }
   },
   "steps": {
