@@ -1,6 +1,6 @@
 {
-  "description": "Deploy VM tanpa public IP",
-  "jobId": "deploy-vm-without-public-ip",
+  "description": "Rolledback - Static NAT gagal; rollback VPC sukses setelah retry",
+  "jobId": "deploy-vm-with-public-ip",
   "defaults": {
     "apiControl": {
       "delay": 0,
@@ -8,7 +8,7 @@
       "result": 1
     },
     "config": {
-      "maxRetries": 2
+      "maxRetries": 1
     }
   },
   "steps": {
@@ -16,6 +16,12 @@
       "input": {
         "cidr": "10.20.0.0/16",
         "name": "wowdev-vpc"
+      },
+      "apiControl": {
+        "rollbackResultSequence": [2, 1]
+      },
+      "config": {
+        "maxRollbackRetries": 1
       }
     },
     "subnet": {
@@ -48,6 +54,18 @@
         "name": "wowdev-vm",
         "serviceOfferingId": "offering-1",
         "templateId": "template-1"
+      }
+    },
+    "public-ip": {
+      "input": {}
+    },
+    "static-nat": {
+      "input": {},
+      "apiControl": {
+        "result": 2
+      },
+      "config": {
+        "maxRetries": 2
       }
     }
   }

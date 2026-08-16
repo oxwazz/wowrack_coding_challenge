@@ -1,0 +1,60 @@
+{
+  "description": "Success - Deploy VM dengan public IP",
+  "jobId": "deploy-vm-with-public-ip",
+  "defaults": {
+    "apiControl": {
+      "delay": 0,
+      "timeout": 0,
+      "result": 1
+    },
+    "config": {
+      "maxRetries": 1
+    }
+  },
+  "steps": {
+    "vpc": {
+      "input": {
+        "cidr": "10.20.0.0/16",
+        "name": "wowdev-vpc"
+      }
+    },
+    "subnet": {
+      "input": {
+        "name": "wowdev-subnet",
+        "gateway": "10.20.1.1",
+        "netmask": "255.255.255.0"
+      }
+    },
+    "acl-list": {
+      "input": {
+        "name": "wowdev-acl"
+      }
+    },
+    "acl-rule": {
+      "input": {
+        "protocol": "tcp",
+        "cidrList": "10.20.1.0/24",
+        "action": "allow",
+        "trafficType": "Ingress",
+        "startPort": 22,
+        "endPort": 22
+      }
+    },
+    "attach-acl": {
+      "input": {}
+    },
+    "vm": {
+      "input": {
+        "name": "wowdev-vm",
+        "serviceOfferingId": "offering-1",
+        "templateId": "template-1"
+      }
+    },
+    "public-ip": {
+      "input": {}
+    },
+    "static-nat": {
+      "input": {}
+    }
+  }
+}

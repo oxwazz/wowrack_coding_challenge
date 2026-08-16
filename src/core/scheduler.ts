@@ -12,39 +12,26 @@ export class Scheduler {
     private readonly executor: JobExecutor,
   ) {}
 
-  async resume(jobRunId: string): Promise<JobRunResult> {
-    const jobRun = await this.store.getJobRun(jobRunId);
-    if (jobRun.status === "RUNNING") return this.run(jobRunId);
-    if (jobRun.status === "ROLLING_BACK") {
-      await rollbackSuccessfulJobs(this.store, this.executor, jobRunId);
-      return {
-        jobRun: await this.store.getJobRun(jobRunId),
-        jobs: await this.store.getJobStepRuns(jobRunId),
-      };
-    }
-    throw new Error(`Job run ${jobRunId} is not interrupted: ${jobRun.status}`);
-  }
-
   async run(jobRunId: string): Promise<JobRunResult> {
+    const jobRun = await this.store.getJobRun(jobRunId);
+    if (jobRun.status !== "PENDING") {
+      throw new Error(`Job run ${jobRunId} cannot be started: ${jobRun.status}`);
+    }
     await this.store.setJobRunStatus(jobRunId, "RUNNING");
     const definitions = await this.store.getJobDefinitions(jobRunId);
     const jobs = await this.store.getJobStepRuns(jobRunId);
     const statuses = new Map(jobs.map((job) => [job.jobId, job.status]));
-    const completed = new Set(
-      jobs.filter(({ status }) => status === "SUCCESS").map(({ jobId }) => jobId),
-    );
     const dependents = new Map(definitions.map((job) => [job.id, [] as string[]]));
     const remaining = new Map(definitions.map((job) => [
       job.id,
-      job.dependsOn.filter((dependency) => !completed.has(dependency)).length,
+      job.dependsOn.length,
     ]));
     for (const job of definitions) {
       for (const dependency of job.dependsOn) dependents.get(dependency)!.push(job.id);
     }
     const ready: string[] = [];
     const running = new Map<string, { controller: AbortController; result: RunningJob }>();
-    let failedBy = jobs.find(({ status, attempt, maxRetries }) =>
-      status === "FAILED" && attempt > maxRetries)?.jobId;
+    let failedBy: string | undefined;
 
     const enqueue = async (jobId: string): Promise<void> => {
       await this.store.transitionJob(jobRunId, jobId, {
@@ -62,8 +49,7 @@ export class Scheduler {
       }
       ready.length = 0;
       for (const [pendingId, status] of statuses) {
-        const staleRunning = status === "RUNNING" && !running.has(pendingId);
-        if ((["PENDING", "READY", "RETRYING"] as JobStatus[]).includes(status) || staleRunning) {
+        if ((["PENDING", "READY", "RETRYING"] as JobStatus[]).includes(status)) {
           await this.store.transitionJob(jobRunId, pendingId, {
             status: "SKIPPED", error: `Blocked by failed job ${jobId}`,
           });
@@ -72,14 +58,10 @@ export class Scheduler {
       }
     };
 
-    if (failedBy === undefined) {
-      for (const job of definitions) {
-        if (statuses.get(job.id) !== "SUCCESS" && remaining.get(job.id) === 0) {
-          await enqueue(job.id);
-        }
+    for (const job of definitions) {
+      if (remaining.get(job.id) === 0) {
+        await enqueue(job.id);
       }
-    } else {
-      await stopAfterFailure(failedBy);
     }
 
     while (ready.length > 0 || running.size > 0) {

@@ -25,7 +25,7 @@ const definitionSteps = createDeploymentSteps(new FakeCloudStackClient({
 
 test("resolves separate stored DAGs with and without public IP", async () => {
   const withoutPublicIpCase = await loadCloudDeploymentCase(
-    join(casesDirectory, "01.without-public-ip.json"),
+    join(casesDirectory, "01.success-without-public-ip.json"),
   );
   const withoutPublicIp = resolveJobCase(
     await loadDeployVmDefinition(withoutPublicIpCase.jobId),
@@ -45,7 +45,7 @@ test("resolves separate stored DAGs with and without public IP", async () => {
   );
 
   const withPublicIpCase = await loadCloudDeploymentCase(
-    join(casesDirectory, "02.with-public-ip.json"),
+    join(casesDirectory, "02.success-with-public-ip.json"),
   );
   const withPublicIp = resolveJobCase(
     await loadDeployVmDefinition(withPublicIpCase.jobId),
@@ -63,17 +63,22 @@ test("resolves separate stored DAGs with and without public IP", async () => {
   assert.deepEqual(withPublicIp.at(-1)?.dependsOn, ["vm", "public-ip"]);
 });
 
-test("loads the six focused deployment cases", async () => {
-  const failedCase = await loadCloudDeploymentCase(join(casesDirectory, "05.failed-job.json"));
+test("loads the seven focused deployment cases", async () => {
+  const rolledbackCase = await loadCloudDeploymentCase(
+    join(casesDirectory, "05.rolledback-job.json"),
+  );
   const retryStatusCase = await loadCloudDeploymentCase(
-    join(casesDirectory, "06.retry-jobstatus-2.json"),
+    join(casesDirectory, "06.success-after-retry-jobstatus-2.json"),
   );
   const parallelAclCase = await loadCloudDeploymentCase(
-    join(casesDirectory, "03.parallel-acl-rules.json"),
+    join(casesDirectory, "03.success-parallel-acl-rules.json"),
   );
-  assert.equal(failedCase.jobId, "deploy-vm-without-public-ip");
-  assert.equal(failedCase.defaults?.config?.maxRetries, 1);
-  assert.deepEqual(failedCase.steps["acl-rule"]?.input, {
+  const timeoutCase = await loadCloudDeploymentCase(
+    join(casesDirectory, "07.rolledback-timeout.json"),
+  );
+  assert.equal(rolledbackCase.jobId, "deploy-vm-without-public-ip");
+  assert.equal(rolledbackCase.defaults?.config?.maxRetries, 1);
+  assert.deepEqual(rolledbackCase.steps["acl-rule"]?.input, {
     protocol: "tcp",
     cidrList: "10.20.1.0/24",
     action: "allow",
@@ -81,10 +86,10 @@ test("loads the six focused deployment cases", async () => {
     startPort: 22,
     endPort: 22,
   });
-  assert.deepEqual(failedCase.steps["acl-rule"]?.apiControl, {
+  assert.deepEqual(rolledbackCase.steps["acl-rule"]?.apiControl, {
     result: 2,
   });
-  assert.equal(failedCase.steps["acl-rule"]?.config?.maxRetries, 2);
+  assert.equal(rolledbackCase.steps["acl-rule"]?.config?.maxRetries, 2);
   assert.deepEqual(retryStatusCase.steps["acl-rule"]?.apiControl, {
     resultSequence: [2, 1],
   });
@@ -99,23 +104,30 @@ test("loads the six focused deployment cases", async () => {
     ).find((job) => job.id === "acl-rule")?.apiControl,
     { delay: 0, timeout: 0, result: 1, resultSequence: [2, 1] },
   );
-  assert.deepEqual(failedCase.steps.vm?.input, {
+  assert.deepEqual(rolledbackCase.steps.vm?.input, {
     name: "wowdev-vm",
     serviceOfferingId: "offering-1",
     templateId: "template-1",
   });
-  assert.deepEqual(failedCase.defaults?.apiControl, {
+  assert.deepEqual(rolledbackCase.defaults?.apiControl, {
     delay: 0, timeout: 0, result: 1,
   });
   assert.deepEqual(
     Object.keys(parallelAclCase.steps["acl-rule"]?.instances ?? {}),
     ["ssh", "http", "https", "dns", "icmp"],
   );
+  assert.deepEqual(timeoutCase.steps.subnet?.apiControl, {
+    delay: 3,
+    timeout: 1,
+  });
+  assert.deepEqual(timeoutCase.steps.subnet?.config, {
+    maxRetries: 1,
+  });
 
   assert.equal(
     resolveJobCase(
-      await loadDeployVmDefinition(failedCase.jobId),
-      failedCase,
+      await loadDeployVmDefinition(rolledbackCase.jobId),
+      rolledbackCase,
       definitionSteps,
     ).length,
     6,
@@ -134,34 +146,39 @@ test("loads the six focused deployment cases", async () => {
       .map(({ filename, index, description }) => ({ filename, index, description })),
     [
       {
-        filename: "01.without-public-ip.json",
+        filename: "01.success-without-public-ip.json",
         index: 1,
-        description: "Deploy VM tanpa public IP",
+        description: "Success - Deploy VM tanpa public IP",
       },
       {
-        filename: "02.with-public-ip.json",
+        filename: "02.success-with-public-ip.json",
         index: 2,
-        description: "Deploy VM dengan public IP",
+        description: "Success - Deploy VM dengan public IP",
       },
       {
-        filename: "03.parallel-acl-rules.json",
+        filename: "03.success-parallel-acl-rules.json",
         index: 3,
-        description: "Lima ACL rule berjalan paralel",
+        description: "Success - Lima ACL rule berjalan paralel",
       },
       {
-        filename: "04.failed-static-nat.json",
+        filename: "04.rolledback-static-nat.json",
         index: 4,
-        description: "Static NAT gagal; rollback VPC sukses setelah retry",
+        description: "Rolledback - Static NAT gagal; rollback VPC sukses setelah retry",
       },
       {
-        filename: "05.failed-job.json",
+        filename: "05.rolledback-job.json",
         index: 5,
-        description: "Job gagal, retry, lalu rollback",
+        description: "Rolledback - Job gagal, retry, lalu rollback",
       },
       {
-        filename: "06.retry-jobstatus-2.json",
+        filename: "06.success-after-retry-jobstatus-2.json",
         index: 6,
-        description: "Jobstatus 2, retry, lalu sukses",
+        description: "Success - Jobstatus 2, retry, lalu sukses",
+      },
+      {
+        filename: "07.rolledback-timeout.json",
+        index: 7,
+        description: "Rolledback - Subnet timeout, retry, lalu rollback",
       },
     ],
   );
@@ -169,7 +186,7 @@ test("loads the six focused deployment cases", async () => {
 
 test("loads a public-IP case configured to fail static NAT", async () => {
   const deploymentCase = await loadCloudDeploymentCase(
-    join(casesDirectory, "04.failed-static-nat.json"),
+    join(casesDirectory, "04.rolledback-static-nat.json"),
   );
   const jobs = resolveJobCase(
     await loadDeployVmDefinition(deploymentCase.jobId),
@@ -213,7 +230,7 @@ test("retries failed static NAT and rolls back its public-IP deployment", async 
 
   try {
     const deploymentCase = await loadCloudDeploymentCase(
-      join(casesDirectory, "04.failed-static-nat.json"),
+      join(casesDirectory, "04.rolledback-static-nat.json"),
     );
     const result = await orchestrator.deployCase(deploymentCase);
     const jobs = Object.fromEntries(result.jobs.map((job) => [job.jobId, job]));
@@ -260,7 +277,7 @@ test("expands one stored ACL step into independently tracked case instances", as
 
   try {
     const deploymentCase = await loadCloudDeploymentCase(
-      join(casesDirectory, "03.parallel-acl-rules.json"),
+      join(casesDirectory, "03.success-parallel-acl-rules.json"),
     );
     if (deploymentCase.defaults?.config !== undefined) {
       deploymentCase.defaults.config.maxRetries = 0;
@@ -320,7 +337,7 @@ test("executes every API command required for a deployment with public IP", asyn
 
   try {
     const deploymentCase = await loadCloudDeploymentCase(
-      join(casesDirectory, "02.with-public-ip.json"),
+      join(casesDirectory, "02.success-with-public-ip.json"),
     );
     if (deploymentCase.defaults?.config !== undefined) {
       deploymentCase.defaults.config.maxRetries = 0;
@@ -381,7 +398,7 @@ test("turns jobstatus=2 into failure and calls documented rollback APIs", async 
 
   try {
     const deploymentCase = await loadCloudDeploymentCase(
-      join(casesDirectory, "05.failed-job.json"),
+      join(casesDirectory, "05.rolledback-job.json"),
     );
     if (deploymentCase.defaults?.config !== undefined) {
       deploymentCase.defaults.config.maxRetries = 0;
@@ -424,7 +441,7 @@ test("demo case succeeds when the first retry is executed", async () => {
 
   try {
     const deploymentCase = await loadCloudDeploymentCase(
-      join(casesDirectory, "06.retry-jobstatus-2.json"),
+      join(casesDirectory, "06.success-after-retry-jobstatus-2.json"),
     );
     const result = await orchestrator.deployCase(deploymentCase);
     const aclRule = result.jobs.find((job) => job.jobId === "acl-rule");

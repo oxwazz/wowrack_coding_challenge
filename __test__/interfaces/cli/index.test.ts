@@ -17,34 +17,39 @@ test("loads deployment case labels and order from case files", async () => {
       .map(({ filename, index, description }) => ({ filename, index, description })),
     [
       {
-        filename: "01.without-public-ip.json",
+        filename: "01.success-without-public-ip.json",
         index: 1,
-        description: "Deploy VM tanpa public IP",
+        description: "Success - Deploy VM tanpa public IP",
       },
       {
-        filename: "02.with-public-ip.json",
+        filename: "02.success-with-public-ip.json",
         index: 2,
-        description: "Deploy VM dengan public IP",
+        description: "Success - Deploy VM dengan public IP",
       },
       {
-        filename: "03.parallel-acl-rules.json",
+        filename: "03.success-parallel-acl-rules.json",
         index: 3,
-        description: "Lima ACL rule berjalan paralel",
+        description: "Success - Lima ACL rule berjalan paralel",
       },
       {
-        filename: "04.failed-static-nat.json",
+        filename: "04.rolledback-static-nat.json",
         index: 4,
-        description: "Static NAT gagal; rollback VPC sukses setelah retry",
+        description: "Rolledback - Static NAT gagal; rollback VPC sukses setelah retry",
       },
       {
-        filename: "05.failed-job.json",
+        filename: "05.rolledback-job.json",
         index: 5,
-        description: "Job gagal, retry, lalu rollback",
+        description: "Rolledback - Job gagal, retry, lalu rollback",
       },
       {
-        filename: "06.retry-jobstatus-2.json",
+        filename: "06.success-after-retry-jobstatus-2.json",
         index: 6,
-        description: "Jobstatus 2, retry, lalu sukses",
+        description: "Success - Jobstatus 2, retry, lalu sukses",
+      },
+      {
+        filename: "07.rolledback-timeout.json",
+        index: 7,
+        description: "Rolledback - Subnet timeout, retry, lalu rollback",
       },
     ],
   );

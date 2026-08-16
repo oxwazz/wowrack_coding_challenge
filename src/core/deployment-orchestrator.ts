@@ -5,14 +5,13 @@ import type {
   DeploymentStepRegistry,
   JobCaseDefinition,
   JobDefinition,
-  JobRunRecord,
   JobRunResult,
 } from "../types.js";
 import { JobExecutor } from "./job-executor.js";
 import { resolveJobCase } from "./job-definition.js";
 import { Scheduler } from "./scheduler.js";
 
-/** High-level facade for creating, executing, resuming, and inspecting deployment runs. */
+/** High-level facade for creating, executing, and inspecting deployment runs. */
 export class DeploymentOrchestrator {
   readonly store: OrchestratorStore;
   private readonly scheduler: Scheduler;
@@ -87,14 +86,6 @@ export class DeploymentOrchestrator {
 
   runJobRun(jobRunId: string): Promise<JobRunResult> {
     return this.scheduler.run(jobRunId);
-  }
-
-  resumeJobRun(jobRunId: string): Promise<JobRunResult> {
-    return this.scheduler.resume(jobRunId);
-  }
-
-  listInterruptedJobRuns(): Promise<JobRunRecord[]> {
-    return this.store.listInterruptedJobRuns();
   }
 
   resetDatabase(): Promise<void> {

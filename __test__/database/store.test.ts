@@ -46,7 +46,6 @@ test("OrchestratorStore rebuilds state and dependencies from deployment logs", a
       (await store.getJobRunLogs("store-test", "vpc")).map(({ status }) => status),
       ["PENDING", "READY", "RUNNING", "SUCCESS"],
     );
-    assert.equal((await store.listInterruptedJobRuns()).length, 1);
   } finally {
     await store.close();
   }

@@ -28,7 +28,7 @@ CLI bersifat interaktif:
 - `Esc` untuk kembali.
 - `q` untuk keluar.
 
-Menu CLI dapat membuat job run baru, melanjutkan job run yang terputus, dan mereset riwayat database.
+Menu CLI dapat membuat job run baru dan mereset riwayat database.
 
 Database persisten berada di:
 
@@ -92,12 +92,13 @@ Case berada di `src/interfaces/cli/cases`.
 
 | File | Skenario |
 |---|---|
-| `01.without-public-ip.json` | Deployment VM tanpa public IP. |
-| `02.with-public-ip.json` | Deployment VM dengan public IP dan static NAT. |
-| `03.parallel-acl-rules.json` | Lima ACL rule di-expand dari satu logical step dan berjalan paralel. |
-| `04.failed-static-nat.json` | Static NAT gagal; rollback VPC gagal sekali lalu sukses setelah retry. |
-| `05.failed-job.json` | ACL rule terus gagal, di-retry, lalu deployment di-rollback. |
-| `06.retry-jobstatus-2.json` | ACL rule mendapat `jobstatus=2`, di-retry, lalu sukses. |
+| `01.success-without-public-ip.json` | Deployment VM tanpa public IP. |
+| `02.success-with-public-ip.json` | Deployment VM dengan public IP dan static NAT. |
+| `03.success-parallel-acl-rules.json` | Lima ACL rule di-expand dari satu logical step dan berjalan paralel. |
+| `04.rolledback-static-nat.json` | Static NAT gagal; rollback VPC gagal sekali lalu sukses setelah retry. |
+| `05.rolledback-job.json` | ACL rule terus gagal, di-retry, lalu deployment di-rollback. |
+| `06.success-after-retry-jobstatus-2.json` | ACL rule mendapat `jobstatus=2`, di-retry, lalu sukses. |
+| `07.rolledback-timeout.json` | Pembuatan subnet melewati timeout, di-retry, lalu deployment di-rollback. |
 
 Nilai yang sama untuk semua step dapat diletakkan di `defaults`. `apiControl` dan `config`
 pada sebuah step akan meng-override bagian yang diperlukan:
@@ -181,7 +182,7 @@ Rollback memiliki sequence dan batas retry terpisah:
 
 Contoh tersebut membuat rollback pertama gagal dan retry rollback pertama sukses.
 Tanpa `maxRollbackRetries`, rollback hanya dicoba satu kali. Attempt rollback disimpan
-terpisah dari attempt eksekusi sehingga proses rollback yang terputus tetap dapat dilanjutkan.
+terpisah dari attempt eksekusi.
 
 Jika semua retry gagal:
 
@@ -191,8 +192,6 @@ Jika semua retry gagal:
 - Status akhir menjadi `ROLLED_BACK` atau `ROLLBACK_FAILED`.
 
 Job tanpa implementasi rollback menjadi `ROLLBACK_SKIPPED`.
-
-Job run berstatus `RUNNING` atau `ROLLING_BACK` dapat dilanjutkan dari menu CLI. Step yang sudah berhasil tidak dijalankan ulang. Jika proses terputus ketika sebuah request masih berjalan, step tersebut dijalankan sebagai attempt baru.
 
 Setiap attempt memiliki timeout global, dengan nilai default 30 detik. Timeout menghentikan client menunggu, tetapi tidak menjamin operasi remote sudah berhenti.
 
@@ -275,5 +274,4 @@ Reset database hanya menghapus `job_runs` dan `job_run_logs`. Definisi job, skem
 - Menggunakan Fake CloudStack API, bukan production.
 - Tidak memiliki autentikasi CloudStack.
 - Tidak memiliki retry backoff.
-- Melanjutkan request yang terputus dapat mengulang operasi remote; sistem production memerlukan rekonsiliasi resource.
 - Gunakan satu proses aktif untuk satu file SQLite.

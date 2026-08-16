@@ -1,6 +1,6 @@
 {
-  "description": "Deploy VM dengan public IP",
-  "jobId": "deploy-vm-with-public-ip",
+  "description": "Success - Deploy VM tanpa public IP",
+  "jobId": "deploy-vm-without-public-ip",
   "defaults": {
     "apiControl": {
       "delay": 0,
@@ -8,7 +8,7 @@
       "result": 1
     },
     "config": {
-      "maxRetries": 1
+      "maxRetries": 2
     }
   },
   "steps": {
@@ -49,12 +49,6 @@
         "serviceOfferingId": "offering-1",
         "templateId": "template-1"
       }
-    },
-    "public-ip": {
-      "input": {}
-    },
-    "static-nat": {
-      "input": {}
     }
   }
 }

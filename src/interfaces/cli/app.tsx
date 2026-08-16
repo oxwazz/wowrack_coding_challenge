@@ -12,7 +12,6 @@ import { errorMessage } from "../../utils.js";
 import { DeploymentOrchestrator } from "../../core/deployment-orchestrator.js";
 import type {
   CloudDeploymentCase,
-  JobRunRecord,
   JobRunResult,
   InteractiveCliOptions,
   JobStepRunRecord,
@@ -35,7 +34,6 @@ type Screen =
   | "case"
   | "confirm"
   | "running"
-  | "interrupted"
   | "reset"
   | "done"
   | "error";
@@ -218,7 +216,6 @@ function App({
       {screen === "menu" && (
         <MainMenu
           onNew={startNewFlow}
-          onInterrupted={() => setScreen("interrupted")}
           onReset={() => setScreen("reset")}
           onExit={() => exit({ exitCode: lastExitCode } satisfies InteractiveExitResult)}
         />
@@ -246,14 +243,6 @@ function App({
         <Runner
           orchestrator={orchestrator}
           deploymentCase={deploymentCase}
-          onComplete={showCompletion}
-          onError={showFailure}
-        />
-      )}
-      {screen === "interrupted" && (
-        <InterruptedJobRuns
-          orchestrator={orchestrator}
-          onBack={() => setScreen("menu")}
           onComplete={showCompletion}
           onError={showFailure}
         />
@@ -297,18 +286,15 @@ function Header() {
 /** Renders and handles keyboard navigation for the top-level CLI menu. */
 function MainMenu({
   onNew,
-  onInterrupted,
   onReset,
   onExit,
 }: {
   onNew: () => void;
-  onInterrupted: () => void;
   onReset: () => void;
   onExit: () => void;
 }) {
   const options = [
     "Mulai job run baru",
-    "Lanjutkan job run yang terputus",
     "Reset database",
     "Keluar",
   ];
@@ -317,7 +303,7 @@ function MainMenu({
     if (key.upArrow) setSelected((value) => wrapIndex(value - 1, options.length));
     if (key.downArrow) setSelected((value) => wrapIndex(value + 1, options.length));
     if (input === "q") onExit();
-    if (key.return) [onNew, onInterrupted, onReset, onExit][selected]?.();
+    if (key.return) [onNew, onReset, onExit][selected]?.();
   });
   return (
     <Panel title="Menu utama">
@@ -487,116 +473,6 @@ function Runner({
       <SummaryRow label="Total waktu" value={formatElapsedSeconds(elapsedMilliseconds)} />
       <JobTable jobs={jobs} />
       <Help>Status dibaca langsung dari SQLite setiap 200 ms.</Help>
-    </Panel>
-  );
-}
-
-interface InterruptedView {
-  jobRun: JobRunRecord;
-  jobs: JobStepRunRecord[];
-}
-
-/** Lists interrupted runs and allows the user to resume the selected workflow. */
-function InterruptedJobRuns({
-  orchestrator,
-  onBack,
-  onComplete,
-  onError,
-}: {
-  orchestrator: DeploymentOrchestrator;
-  onBack: () => void;
-  onComplete: (result: JobRunResult, elapsedMilliseconds: number) => void;
-  onError: (error: unknown) => void;
-}) {
-  const [loading, setLoading] = useState(true);
-  const [views, setViews] = useState<InterruptedView[]>([]);
-  const [selected, setSelected] = useState(0);
-  const [resuming, setResuming] = useState(false);
-
-  /** Resumes the selected run while refreshing its displayed persisted state. */
-  const resumeSelected = useCallback(() => {
-    const selectedView = views[selected];
-    if (selectedView === undefined || resuming) return;
-    setResuming(true);
-    const startedAt = performance.now();
-    let timer: ReturnType<typeof setInterval> | undefined;
-    /** Reloads the selected run and merges its current state into the visible list. */
-    const refresh = async () => {
-      const [jobRun, jobs] = await Promise.all([
-        orchestrator.store.getJobRun(selectedView.jobRun.id),
-        orchestrator.store.getJobStepRuns(selectedView.jobRun.id),
-      ]);
-      setViews((current) => current.map((view) =>
-        view.jobRun.id === jobRun.id ? { jobRun, jobs } : view));
-    };
-    void (async () => {
-      try {
-        // Refresh in parallel with resume so rollback and retry progress stays visible.
-        timer = setInterval(() => void refresh().catch(onError), 200);
-        const result = await orchestrator.resumeJobRun(selectedView.jobRun.id);
-        await refresh();
-        onComplete(result, performance.now() - startedAt);
-      } catch (error) {
-        setResuming(false);
-        onError(error);
-      } finally {
-        if (timer !== undefined) clearInterval(timer);
-      }
-    })();
-  }, [onComplete, onError, orchestrator, resuming, selected, views]);
-
-  useInput((_input, key) => {
-    if (resuming) return;
-    if (key.escape || (key.return && views.length === 0)) onBack();
-    if (key.upArrow) setSelected((value) => wrapIndex(value - 1, views.length));
-    if (key.downArrow) setSelected((value) => wrapIndex(value + 1, views.length));
-    if (key.return && views.length > 0) resumeSelected();
-  });
-  useEffect(() => {
-    let mounted = true;
-    void (async () => {
-      try {
-        const jobRuns = await orchestrator.listInterruptedJobRuns();
-        const loaded = await Promise.all(jobRuns.map(async (jobRun) => ({
-          jobRun,
-          jobs: await orchestrator.store.getJobStepRuns(jobRun.id),
-        })));
-        if (mounted) setViews(loaded);
-      } catch (error) {
-        if (mounted) onError(error);
-      } finally {
-        if (mounted) setLoading(false);
-      }
-    })();
-    return () => {
-      mounted = false;
-    };
-  }, [onError, orchestrator]);
-
-  return (
-    <Panel title="Job run yang terputus">
-      {loading ? (
-        <Text><Spinner /> Membaca SQLite</Text>
-      ) : views.length === 0 ? (
-        <Text dimColor>Tidak ada job run RUNNING atau ROLLING_BACK.</Text>
-      ) : views.map(({ jobRun, jobs }, index) => (
-        <Box key={jobRun.id} flexDirection="column" marginTop={1}>
-          <Text bold color={selected === index ? "cyan" : "white"}>
-            {selected === index ? "❯" : " "} {jobRun.id} · {jobRun.status}
-          </Text>
-          <JobTable
-            jobs={jobs}
-            freezeRunningElapsed={!(resuming && selected === index)}
-          />
-        </Box>
-      ))}
-      <Help>
-        {resuming
-          ? "Melanjutkan job run..."
-          : views.length === 0
-            ? "Enter/Esc kembali ke menu"
-            : "↑/↓ pilih · Enter lanjutkan · Esc kembali"}
-      </Help>
     </Panel>
   );
 }

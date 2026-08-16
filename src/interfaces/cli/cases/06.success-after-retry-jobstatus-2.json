@@ -1,5 +1,5 @@
 {
-  "description": "Job gagal, retry, lalu rollback",
+  "description": "Success - Jobstatus 2, retry, lalu sukses",
   "jobId": "deploy-vm-without-public-ip",
   "defaults": {
     "apiControl": {
@@ -23,12 +23,6 @@
         "name": "wowdev-subnet",
         "gateway": "10.20.1.1",
         "netmask": "255.255.255.0"
-      },
-      "apiControl": {
-        "result": 2
-      },
-      "config": {
-        "maxRetries": 1
       }
     },
     "acl-list": {
@@ -44,6 +38,12 @@
         "trafficType": "Ingress",
         "startPort": 22,
         "endPort": 22
+      },
+      "apiControl": {
+        "resultSequence": [2, 1]
+      },
+      "config": {
+        "maxRetries": 1
       }
     },
     "attach-acl": {

@@ -54,7 +54,7 @@ function completedPhaseDuration(
   let duration = 0;
   for (const log of history) {
     if (log.status === startingStatus) {
-      // A later start replaces an incomplete earlier phase after an interrupted attempt.
+      // A new phase start supersedes any unmatched start timestamp.
       startedAt = Date.parse(log.createdAt);
     } else if (startedAt !== null && finishingStatuses.has(log.status)) {
       const finishedAt = Date.parse(log.createdAt);
@@ -166,15 +166,6 @@ export class OrchestratorStore {
       .where("id", "=", jobRunId).executeTakeFirst();
     if (row === undefined) throw new Error(`Job run not found: ${jobRunId}`);
     return toJobRun(row);
-  }
-
-  /** Lists runs left in an executable or rollback state after an interruption. */
-  async listInterruptedJobRuns(): Promise<JobRunRecord[]> {
-    await this.ready;
-    const rows = await this.database.selectFrom("jobRuns").selectAll()
-      .where("status", "in", ["RUNNING", "ROLLING_BACK"])
-      .orderBy("createdAt").execute();
-    return rows.map(toJobRun);
   }
 
   /** Deletes all run history while leaving schema and job definitions intact. */
