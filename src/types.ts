@@ -19,6 +19,8 @@ export interface JobDefinition {
   maxRetries?: number;
   /** JSON-serializable handler input persisted with the job. */
   input?: JsonValue;
+  /** Fake API behavior used by demo cases; kept separate from business input. */
+  apiControl?: JsonValue;
 }
 
 export interface JobStepDefinition {
@@ -41,11 +43,22 @@ export interface JobDefinitionRecord extends StoredJobDefinition {
 }
 
 export interface JobCaseDefaults {
+  apiControl?: JsonObject;
+  config?: JobCaseConfig;
+  /** @deprecated Use `config.maxRetries`. */
+  maxRetries?: number;
+}
+
+export interface JobCaseConfig {
+  /** Number of retries after the first attempt. */
   maxRetries?: number;
 }
 
 export interface JobCaseStep {
   input?: JsonValue;
+  apiControl?: JsonObject;
+  config?: JobCaseConfig;
+  /** @deprecated Use `config.maxRetries` in deployment case files. */
   maxRetries?: number;
 }
 
@@ -64,6 +77,7 @@ export interface JobStepRunRecord {
   attempt: number;
   maxRetries: number;
   input: JsonValue | null;
+  apiControl?: JsonValue;
   result: JsonValue | null;
   error: string | null;
   startedAt: string | null;
@@ -98,6 +112,7 @@ export interface JobRunContext {
   jobId: string;
   attempt: number;
   input: JsonValue | null;
+  apiControl?: JsonValue;
   dependencyResults: Readonly<Record<string, JsonValue | null>>;
   signal: AbortSignal;
   sleep: (milliseconds: number) => Promise<void>;

@@ -2,38 +2,35 @@
   "description": "Subnet lambat, cabang ACL lebih dulu",
   "jobId": "deploy-vm-without-public-ip",
   "defaults": {
-    "maxRetries": 1
+    "apiControl": {
+      "delay": 0,
+      "timeout": 0,
+      "result": 1
+    },
+    "config": {
+      "maxRetries": 1
+    }
   },
   "steps": {
     "vpc": {
       "input": {
         "cidr": "10.20.0.0/16",
-        "name": "wowdev-vpc",
-        "apiControl": {
-          "delay": 0,
-          "timeout": 0,
-          "result": 1
-        }
+        "name": "wowdev-vpc"
       }
     },
     "subnet": {
       "input": {
         "name": "wowdev-subnet",
         "gateway": "10.20.1.1",
-        "netmask": "255.255.255.0",
-        "apiControl": {
-          "delay": 10
-        }
+        "netmask": "255.255.255.0"
+      },
+      "apiControl": {
+        "delay": 10
       }
     },
     "acl-list": {
       "input": {
-        "name": "wowdev-acl",
-        "apiControl": {
-          "delay": 0,
-          "timeout": 0,
-          "result": 1
-        }
+        "name": "wowdev-acl"
       }
     },
     "acl-rule": {
@@ -43,33 +40,17 @@
         "action": "allow",
         "trafficType": "Ingress",
         "startPort": 22,
-        "endPort": 22,
-        "apiControl": {
-          "delay": 0,
-          "timeout": 0,
-          "result": 1
-        }
+        "endPort": 22
       }
     },
     "attach-acl": {
-      "input": {
-        "apiControl": {
-          "delay": 0,
-          "timeout": 0,
-          "result": 1
-        }
-      }
+      "input": {}
     },
     "vm": {
       "input": {
         "name": "wowdev-vm",
         "serviceOfferingId": "offering-1",
-        "templateId": "template-1",
-        "apiControl": {
-          "delay": 0,
-          "timeout": 0,
-          "result": 1
-        }
+        "templateId": "template-1"
       }
     }
   }

@@ -89,6 +89,7 @@ export class JobExecutor {
         jobId: job.jobId,
         attempt: job.attempt,
         input: job.input,
+        ...(job.apiControl === undefined ? {} : { apiControl: job.apiControl }),
         dependencyResults: await this.store.getDependencyResults(job.jobRunId, job.jobId),
         signal: attemptSignal,
         sleep: (milliseconds) => sleep(milliseconds, attemptSignal),

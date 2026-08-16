@@ -97,15 +97,36 @@ Case berada di `src/interfaces/cli/cases`.
 | `03.slow-subnet.json` | Subnet lambat, tetapi cabang ACL tetap berjalan. |
 | `04.failed-job.json` | ACL rule gagal, di-retry, lalu deployment di-rollback. |
 
-`apiControl` di dalam case digunakan untuk mengatur respons Fake CloudStack API:
+Nilai yang sama untuk semua step dapat diletakkan di `defaults`. `apiControl` dan `config`
+pada sebuah step akan meng-override bagian yang diperlukan:
+
+```json
+{
+  "defaults": {
+    "apiControl": { "delay": 0, "timeout": 0, "result": 1 },
+    "config": { "maxRetries": 1 }
+  },
+  "steps": {
+    "acl-rule": {
+      "input": { "protocol": "tcp" },
+      "apiControl": { "result": 2 },
+      "config": { "maxRetries": 2 }
+    }
+  }
+}
+```
+
+Pada contoh tersebut, `acl-rule` tetap mewarisi `delay` dan `timeout`, tetapi mengganti
+`result` serta jumlah retry. `apiControl` mendukung:
 
 - `delay`: waktu tunggu simulasi.
+- `timeout`: batas tunggu simulasi.
 - `result: 1`: request berhasil.
 - `result: 2`: request gagal.
 
 ## Retry dan rollback
 
-`maxRetries` adalah jumlah percobaan tambahan setelah attempt pertama.
+`config.maxRetries` adalah jumlah percobaan tambahan setelah attempt pertama.
 
 ```text
 maxRetries = 0 → maksimal 1 attempt

@@ -64,7 +64,7 @@ export function createCloudStackHandlers(
           query: {
             cidr: requiredInputString(input, "cidr", context.jobId),
             name: optionalInputString(input, "name"),
-            ...apiControl(input),
+            ...apiControl(context),
           },
           signal: context.signal,
         });
@@ -92,7 +92,7 @@ export function createCloudStackHandlers(
             name: requiredInputString(input, "name", context.jobId),
             gateway: requiredInputString(input, "gateway", context.jobId),
             netmask: requiredInputString(input, "netmask", context.jobId),
-            ...apiControl(input),
+            ...apiControl(context),
           },
           signal: context.signal,
         });
@@ -118,7 +118,7 @@ export function createCloudStackHandlers(
           query: {
             vpcid: requiredString(vpc, "id", "vpc result"),
             name: requiredInputString(input, "name", context.jobId),
-            ...apiControl(input),
+            ...apiControl(context),
           },
           signal: context.signal,
         });
@@ -140,7 +140,7 @@ export function createCloudStackHandlers(
             traffictype: optionalInputString(input, "trafficType"),
             startport: optionalInputNumber(input, "startPort"),
             endport: optionalInputNumber(input, "endPort"),
-            ...apiControl(input),
+            ...apiControl(context),
           },
           signal: context.signal,
         });
@@ -150,14 +150,13 @@ export function createCloudStackHandlers(
     [replaceNetworkAclListSpec.handler]: {
       /** Replaces the subnet's ACL list with the list containing the configured rule. */
       async run(context) {
-        const input = inputObject(context);
         const subnet = dependencyObject(context, "subnet");
         const aclList = dependencyObject(context, "acl-list");
         const aclListId = requiredString(aclList, "id", "acl-list result");
         const networkId = requiredString(subnet, "id", "subnet result");
         await replaceNetworkAclList({
           client,
-          query: { aclid: aclListId, networkid: networkId, ...apiControl(input) },
+          query: { aclid: aclListId, networkid: networkId, ...apiControl(context) },
           signal: context.signal,
         });
         return { success: true, aclListId, networkId };
@@ -176,7 +175,7 @@ export function createCloudStackHandlers(
             serviceofferingid: requiredInputString(input, "serviceOfferingId", context.jobId),
             templateid: requiredInputString(input, "templateId", context.jobId),
             name: optionalInputString(input, "name"),
-            ...apiControl(input),
+            ...apiControl(context),
           },
           signal: context.signal,
         });
@@ -197,7 +196,7 @@ export function createCloudStackHandlers(
       async run(context) {
         const addresses = await listPublicIpAddresses({
           client,
-          query: apiControl(inputObject(context)),
+          query: apiControl(context),
           signal: context.signal,
         });
         // Preserve API ordering and select the first address that is currently allocatable.
@@ -214,7 +213,6 @@ export function createCloudStackHandlers(
     [enableStaticNatSpec.handler]: {
       /** Enables static NAT between the selected public IP and deployed virtual machine. */
       async run(context) {
-        const input = inputObject(context);
         const vm = dependencyObject(context, "vm");
         const publicIp = dependencyObject(context, "public-ip");
         // Fake responses may expose the network either directly or through the VM's NIC list.
@@ -227,7 +225,7 @@ export function createCloudStackHandlers(
             networkid: networkId,
             ipaddressid: publicIpId,
             virtualmachineid: virtualMachineId,
-            ...apiControl(input),
+            ...apiControl(context),
           },
           signal: context.signal,
         });
@@ -278,8 +276,10 @@ function optionalInputNumber(input: JsonObject, key: string): number | undefined
 }
 
 /** Extracts fake-API timing and outcome controls while applying safe defaults. */
-function apiControl(input: JsonObject): ApiParameters {
-  const controlValue = input.apiControl;
+function apiControl(context: Pick<JobRunContext, "apiControl" | "input">): ApiParameters {
+  // Reading the legacy input location keeps existing programmatic callers compatible.
+  const input = asObject(context.input ?? {}, "job input");
+  const controlValue = context.apiControl ?? input.apiControl;
   const control = controlValue === undefined ? {} : asObject(controlValue, "apiControl");
   return {
     // Successful completion is the default unless a test case explicitly overrides it.

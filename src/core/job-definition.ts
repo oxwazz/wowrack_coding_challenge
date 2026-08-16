@@ -19,12 +19,22 @@ export function resolveJobCase(
 ): JobDefinition[] {
   return buildApiJobGraph(definition.apiIds).map((step) => {
     const configured = deploymentCase.steps[step.id] ?? {};
-    const maxRetries = configured.maxRetries ?? deploymentCase.defaults?.maxRetries;
+    const maxRetries = configured.config?.maxRetries
+      ?? configured.maxRetries
+      ?? deploymentCase.defaults?.config?.maxRetries
+      ?? deploymentCase.defaults?.maxRetries;
+    const hasApiControl = deploymentCase.defaults?.apiControl !== undefined
+      || configured.apiControl !== undefined;
+    const apiControl = {
+      ...deploymentCase.defaults?.apiControl,
+      ...configured.apiControl,
+    };
     return {
       id: step.id,
       type: step.handler,
       dependsOn: [...step.dependsOn],
       ...(configured.input === undefined ? {} : { input: configured.input }),
+      ...(hasApiControl ? { apiControl } : {}),
       ...(maxRetries === undefined ? {} : { maxRetries }),
     };
   });

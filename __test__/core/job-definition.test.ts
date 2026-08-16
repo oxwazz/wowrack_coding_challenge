@@ -12,10 +12,16 @@ const definition: StoredJobDefinition = {
 test("resolveJobCase builds steps from API specs and applies case configuration", () => {
   const jobs = resolveJobCase(definition, {
     jobId: "deploy",
-    defaults: { maxRetries: 1 },
+    defaults: {
+      apiControl: { delay: 0, timeout: 30, result: 1 },
+      config: { maxRetries: 1 },
+    },
     steps: {
-      vpc: { input: { cidr: "10.0.0.0/16" } },
-      subnet: { maxRetries: 0 },
+      vpc: {
+        input: { cidr: "10.0.0.0/16" },
+        apiControl: { delay: 5 },
+      },
+      subnet: { config: { maxRetries: 0 } },
     },
   });
 
@@ -25,12 +31,14 @@ test("resolveJobCase builds steps from API specs and applies case configuration"
       type: "create_vpc",
       dependsOn: [],
       input: { cidr: "10.0.0.0/16" },
+      apiControl: { delay: 5, timeout: 30, result: 1 },
       maxRetries: 1,
     },
     {
       id: "subnet",
       type: "create_subnet",
       dependsOn: ["vpc"],
+      apiControl: { delay: 0, timeout: 30, result: 1 },
       maxRetries: 0,
     },
   ]);

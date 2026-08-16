@@ -51,9 +51,8 @@ test("resolves separate stored DAGs with and without public IP", async () => {
     id: "public-ip",
     type: "list_public_ip",
     dependsOn: [],
-    input: {
-      apiControl: { delay: 0, timeout: 0, result: 1 },
-    },
+    input: {},
+    apiControl: { delay: 0, timeout: 0, result: 1 },
     maxRetries: 1,
   });
   assert.deepEqual(withPublicIp.at(-1)?.dependsOn, ["vm", "public-ip"]);
@@ -62,7 +61,7 @@ test("resolves separate stored DAGs with and without public IP", async () => {
 test("loads the four focused deployment cases", async () => {
   const failedCase = await loadCloudDeploymentCase(join(casesDirectory, "04.failed-job.json"));
   assert.equal(failedCase.jobId, "deploy-vm-without-public-ip");
-  assert.equal(failedCase.defaults?.maxRetries, 1);
+  assert.equal(failedCase.defaults?.config?.maxRetries, 1);
   assert.deepEqual(failedCase.steps["acl-rule"]?.input, {
     protocol: "tcp",
     cidrList: "10.20.1.0/24",
@@ -70,13 +69,18 @@ test("loads the four focused deployment cases", async () => {
     trafficType: "Ingress",
     startPort: 22,
     endPort: 22,
-    apiControl: { delay: 0, timeout: 0, result: 2 },
   });
+  assert.deepEqual(failedCase.steps["acl-rule"]?.apiControl, {
+    result: 2,
+  });
+  assert.equal(failedCase.steps["acl-rule"]?.config?.maxRetries, 2);
   assert.deepEqual(failedCase.steps.vm?.input, {
     name: "wowdev-vm",
     serviceOfferingId: "offering-1",
     templateId: "template-1",
-    apiControl: { delay: 0, timeout: 0, result: 1 },
+  });
+  assert.deepEqual(failedCase.defaults?.apiControl, {
+    delay: 0, timeout: 0, result: 1,
   });
 
   assert.equal(
@@ -125,11 +129,16 @@ test("loads a case where the ACL branch finishes before the subnet", async () =>
     name: "wowdev-subnet",
     gateway: "10.20.1.1",
     netmask: "255.255.255.0",
-    apiControl: { delay: 10 },
+  });
+  assert.deepEqual(deploymentCase.steps.subnet?.apiControl, { delay: 10 });
+  assert.deepEqual(jobs.find((job) => job.id === "subnet")?.apiControl, {
+    delay: 10, timeout: 0, result: 1,
   });
   assert.deepEqual(jobs.find((job) => job.id === "acl-list")?.input, {
     name: "wowdev-acl",
-    apiControl: { delay: 0, timeout: 0, result: 1 },
+  });
+  assert.deepEqual(jobs.find((job) => job.id === "acl-list")?.apiControl, {
+    delay: 0, timeout: 0, result: 1,
   });
   assert.deepEqual(jobs.find((job) => job.id === "acl-rule")?.input, {
     protocol: "tcp",
@@ -138,7 +147,9 @@ test("loads a case where the ACL branch finishes before the subnet", async () =>
     trafficType: "Ingress",
     startPort: 22,
     endPort: 22,
-    apiControl: { delay: 0, timeout: 0, result: 1 },
+  });
+  assert.deepEqual(jobs.find((job) => job.id === "acl-rule")?.apiControl, {
+    delay: 0, timeout: 0, result: 1,
   });
 });
 
@@ -154,21 +165,14 @@ test("advances ACL list and rule while the slow subnet is still running", async 
     const deploymentCase = await loadCloudDeploymentCase(
       join(casesDirectory, "03.slow-subnet.json"),
     );
-    const subnetInput = deploymentCase.steps.subnet?.input;
-    assert(
-      subnetInput !== null &&
-      typeof subnetInput === "object" &&
-      !Array.isArray(subnetInput),
-    );
-    subnetInput.apiControl = { delay: 0.03 };
-    const vpcInput = deploymentCase.steps.vpc?.input;
-    assert(
-      vpcInput !== null &&
-      typeof vpcInput === "object" &&
-      !Array.isArray(vpcInput),
-    );
-    vpcInput.apiControl = { timeout: 35 };
-    if (deploymentCase.defaults !== undefined) deploymentCase.defaults.maxRetries = 0;
+    const subnet = deploymentCase.steps.subnet;
+    const vpc = deploymentCase.steps.vpc;
+    assert(subnet !== undefined && vpc !== undefined);
+    subnet.apiControl = { delay: 0.03 };
+    vpc.apiControl = { timeout: 35 };
+    if (deploymentCase.defaults?.config !== undefined) {
+      deploymentCase.defaults.config.maxRetries = 0;
+    }
 
     const jobRunId = await orchestrator.createJobRunFromCase(deploymentCase);
     const execution = orchestrator.runJobRun(jobRunId);
@@ -229,7 +233,9 @@ test("executes every API command required for a deployment with public IP", asyn
     const deploymentCase = await loadCloudDeploymentCase(
       join(casesDirectory, "02.with-public-ip.json"),
     );
-    if (deploymentCase.defaults !== undefined) deploymentCase.defaults.maxRetries = 0;
+    if (deploymentCase.defaults?.config !== undefined) {
+      deploymentCase.defaults.config.maxRetries = 0;
+    }
     const result = await orchestrator.deployCase(deploymentCase);
     assert.equal(result.jobRun.status, "SUCCESS");
     assert.equal(result.jobRun.jobDefinitionId, "deploy-vm-with-public-ip");
@@ -288,7 +294,9 @@ test("turns jobstatus=2 into failure and calls documented rollback APIs", async 
     const deploymentCase = await loadCloudDeploymentCase(
       join(casesDirectory, "04.failed-job.json"),
     );
-    if (deploymentCase.defaults !== undefined) deploymentCase.defaults.maxRetries = 0;
+    if (deploymentCase.defaults?.config !== undefined) {
+      deploymentCase.defaults.config.maxRetries = 0;
+    }
     const result = await orchestrator.deployCase(deploymentCase);
     const states = Object.fromEntries(result.jobs.map((job) => [job.jobId, job.status]));
     assert.equal(result.jobRun.status, "ROLLED_BACK");

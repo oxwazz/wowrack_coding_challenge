@@ -397,7 +397,14 @@ function Confirm({
       />
       <SummaryRow label="Template" value={caseInputString(deploymentCase, "templateId")} />
       <SummaryRow label="Global timeout" value={`${CLI_DEFAULTS.jobTimeoutMs} ms`} />
-      <SummaryRow label="Retry" value={String(deploymentCase.defaults?.maxRetries ?? maxRetries)} />
+      <SummaryRow
+        label="Retry"
+        value={String(
+          deploymentCase.defaults?.config?.maxRetries
+            ?? deploymentCase.defaults?.maxRetries
+            ?? maxRetries,
+        )}
+      />
       <SummaryRow label="Database" value={databasePath} />
       <SummaryRow label="API" value={endpoint} />
       <Box marginTop={1}>

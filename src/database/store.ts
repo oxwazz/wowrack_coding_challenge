@@ -243,6 +243,7 @@ export class OrchestratorStore {
         attempt: latest.attempt,
         maxRetries: job.maxRetries ?? 0,
         input: job.input ?? null,
+        ...(job.apiControl === undefined ? {} : { apiControl: job.apiControl }),
         result: latest.result,
         error: latest.error,
         startedAt: started?.createdAt ?? null,
