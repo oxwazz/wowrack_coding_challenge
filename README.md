@@ -294,10 +294,3 @@ __test__/                    unit dan integration test
 | `npm test` | Menjalankan seluruh test. |
 
 Reset database hanya menghapus `job_runs` dan `job_run_logs`. Definisi job, skema, dan migrasi tetap dipertahankan.
-
-## Batasan POC
-
-- Menggunakan Fake CloudStack API, bukan production.
-- Tidak memiliki autentikasi CloudStack.
-- Tidak memiliki retry backoff.
-- Gunakan satu proses aktif untuk satu file SQLite.

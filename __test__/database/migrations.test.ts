@@ -4,10 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
 import { sql } from "kysely";
-import {
-  migrateToLatest,
-  rollbackLastMigration,
-} from "../../src/database/migrations.js";
+import { rollbackLastMigration } from "../../src/database/migrations.js";
 import { OrchestratorStore } from "../../src/database/store.js";
 
 test("runs ordered Kysely schema and reference-data migrations", async () => {
@@ -20,8 +17,6 @@ test("runs ordered Kysely schema and reference-data migrations", async () => {
     assert.deepEqual(migrations.rows.map(({ name }) => name), [
       "001_init_db",
       "002_seed",
-      "003_api_id_definitions",
-      "004_logical_step_types",
     ]);
 
     const tables = (await store.database.introspection.getTables())
@@ -94,7 +89,7 @@ test("runs only pending migrations on the next startup", async () => {
       const migrations = await sql<{ count: number }>`
         SELECT COUNT(*) AS count FROM kysely_migration
       `.execute(second.database);
-      assert.equal(migrations.rows[0]?.count, 4);
+      assert.equal(migrations.rows[0]?.count, 2);
     } finally {
       await second.close();
     }
@@ -103,24 +98,37 @@ test("runs only pending migrations on the next startup", async () => {
   }
 });
 
-test("migrates persisted deployment snapshots to logical step types", async () => {
-  const store = new OrchestratorStore(":memory:");
+test("normalizes migration history created before the two-file squash", async () => {
+  const databasePath = temporaryDatabasePath("squashed-migrations");
   try {
-    await store.ready;
-    await rollbackLastMigration(store.database);
-    await store.createJobRun(
-      "legacy-types",
-      [{ id: "vpc", type: "create_vpc", dependsOn: [] }],
-      "deploy-vm-without-public-ip",
-    );
+    const first = new OrchestratorStore(databasePath);
+    await first.ready;
+    await sql`
+      INSERT INTO kysely_migration (name, timestamp) VALUES
+        ('003_api_id_definitions', ${new Date().toISOString()}),
+        ('004_logical_step_types', ${new Date().toISOString()})
+    `.execute(first.database);
+    await first.close();
 
-    await migrateToLatest(store.database);
-    assert.equal((await store.getJobDefinitions("legacy-types"))[0]?.type, "vpc");
-
-    await rollbackLastMigration(store.database);
-    assert.equal((await store.getJobDefinitions("legacy-types"))[0]?.type, "create_vpc");
+    const second = new OrchestratorStore(databasePath);
+    try {
+      await second.ready;
+      const migrations = await sql<{ name: string }>`
+        SELECT name FROM kysely_migration ORDER BY name
+      `.execute(second.database);
+      assert.deepEqual(migrations.rows.map(({ name }) => name), [
+        "001_init_db",
+        "002_seed",
+      ]);
+      assert.equal(
+        (await second.getJobDefinition("deploy-vm-with-public-ip")).stepIds.length,
+        8,
+      );
+    } finally {
+      await second.close();
+    }
   } finally {
-    await store.close();
+    removeDatabase(databasePath);
   }
 });
 
@@ -136,12 +144,6 @@ test("rolls schema and reference data back one migration at a time", async () =>
       createdAt: timestamp,
       updatedAt: timestamp,
     }).execute();
-
-    await rollbackLastMigration(store.database);
-    assert.equal((await store.getJobDefinition("deploy-vm-with-public-ip")).stepIds.length, 8);
-
-    await rollbackLastMigration(store.database);
-    assert.equal((await store.getJobDefinition("deploy-vm-with-public-ip")).stepIds.length, 8);
 
     await rollbackLastMigration(store.database);
     await assert.rejects(() => store.getJobDefinition("deploy-vm-with-public-ip"));
