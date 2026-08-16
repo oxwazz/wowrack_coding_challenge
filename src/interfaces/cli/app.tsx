@@ -146,7 +146,6 @@ function App({
   casesDirectory,
   databasePath,
   endpoint,
-  maxRetries,
   cases,
 }: InteractiveCliOptions & { cases: CloudDeploymentCaseSummary[] }) {
   const { exit } = useApp();
@@ -231,10 +230,8 @@ function App({
       {screen === "confirm" && deploymentCase !== undefined && caseSummary !== undefined && (
         <Confirm
           caseSummary={caseSummary}
-          deploymentCase={deploymentCase}
           databasePath={databasePath}
           endpoint={endpoint}
-          maxRetries={maxRetries}
           onStart={start}
           onBack={() => setScreen("case")}
         />
@@ -352,18 +349,14 @@ function CasePicker({
 /** Shows the selected case configuration and requests deployment confirmation. */
 function Confirm({
   caseSummary,
-  deploymentCase,
   databasePath,
   endpoint,
-  maxRetries,
   onStart,
   onBack,
 }: {
   caseSummary: CloudDeploymentCaseSummary;
-  deploymentCase: CloudDeploymentCase;
   databasePath: string;
   endpoint: string;
-  maxRetries: number;
   onStart: () => void;
   onBack: () => void;
 }) {
@@ -378,27 +371,7 @@ function Confirm({
   return (
     <Panel title="Konfirmasi deployment">
       <SummaryRow label="Case" value={caseSummary.description} />
-      <SummaryRow
-        label="Service offering"
-        value={caseInputString(deploymentCase, "serviceOfferingId")}
-      />
-      <SummaryRow label="Template" value={caseInputString(deploymentCase, "templateId")} />
       <SummaryRow label="Global timeout" value={`${CLI_DEFAULTS.jobTimeoutMs} ms`} />
-      <SummaryRow
-        label="Retry"
-        value={String(
-          deploymentCase.defaults?.config?.maxRetries
-            ?? deploymentCase.defaults?.maxRetries
-            ?? maxRetries,
-        )}
-      />
-      <SummaryRow
-        label="Retry rollback"
-        value={String(
-          deploymentCase.defaults?.config?.maxRollbackRetries
-            ?? CLI_DEFAULTS.maxRollbackRetries,
-        )}
-      />
       <SummaryRow label="Database" value={databasePath} />
       <SummaryRow label="API" value={endpoint} />
       <Box marginTop={1}>
@@ -680,14 +653,6 @@ function SummaryRow({ label, value }: { label: string; value: string }) {
       <Text>{value}</Text>
     </Box>
   );
-}
-
-/** Reads a string from the VM input section for display in the confirmation summary. */
-function caseInputString(deploymentCase: CloudDeploymentCase, key: string): string {
-  const input = deploymentCase.steps.vm?.input;
-  if (input === null || typeof input !== "object" || Array.isArray(input)) return "-";
-  const value = input[key];
-  return typeof value === "string" ? value : "-";
 }
 
 /** Renders contextual keyboard instructions beneath a CLI view. */

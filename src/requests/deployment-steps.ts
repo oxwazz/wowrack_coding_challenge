@@ -299,11 +299,13 @@ function apiControl(
   const controlValue = context.apiControl ?? input.apiControl;
   const control = controlValue === undefined ? {} : asObject(controlValue, "apiControl");
   return {
-    // A configured sequence maps attempts to results and repeats its last value if exhausted.
-    result: resultFromSequence(control.resultSequence, context.attempt)
+    // Configured sequences map attempts to values and repeat their last value if exhausted.
+    result: numberFromSequence(control.resultSequence, context.attempt)
       ?? (typeof control.result === "number" ? control.result : 1),
-    delay: typeof control.delay === "number" ? control.delay : undefined,
-    timeout: typeof control.timeout === "number" ? control.timeout : undefined,
+    delay: numberFromSequence(control.delaySequence, context.attempt)
+      ?? (typeof control.delay === "number" ? control.delay : undefined),
+    timeout: numberFromSequence(control.timeoutSequence, context.attempt)
+      ?? (typeof control.timeout === "number" ? control.timeout : undefined),
   };
 }
 
@@ -315,12 +317,12 @@ function rollbackApiControl(
     ? {}
     : asObject(context.apiControl, "apiControl");
   return {
-    result: resultFromSequence(control.rollbackResultSequence, context.attempt) ?? 1,
+    result: numberFromSequence(control.rollbackResultSequence, context.attempt) ?? 1,
   };
 }
 
 /** Maps a one-based attempt number to a finite sequence value, repeating the last value. */
-function resultFromSequence(
+function numberFromSequence(
   value: JsonObject[string] | undefined,
   attempt: number,
 ): number | undefined {

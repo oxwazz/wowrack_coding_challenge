@@ -32,24 +32,19 @@ test("loads deployment case labels and order from case files", async () => {
         description: "Success - Lima ACL rule berjalan paralel",
       },
       {
-        filename: "04.rolledback-static-nat.json",
+        filename: "04.success-after-two-timeouts-40s.json",
         index: 4,
-        description: "Rolledback - Static NAT gagal; rollback VPC sukses setelah retry",
+        description: "Success - Dua kali timeout 40 detik, retry, lalu sukses",
       },
       {
-        filename: "05.rolledback-job.json",
+        filename: "05.success-after-two-delays-40s.json",
         index: 5,
-        description: "Rolledback - Job gagal, retry, lalu rollback",
+        description: "Success - Dua kali delay 40 detik, retry, lalu sukses",
       },
       {
         filename: "06.success-after-retry-jobstatus-2.json",
         index: 6,
         description: "Success - Jobstatus 2, retry, lalu sukses",
-      },
-      {
-        filename: "07.rolledback-timeout.json",
-        index: 7,
-        description: "Rolledback - Subnet timeout, retry, lalu rollback",
       },
     ],
   );

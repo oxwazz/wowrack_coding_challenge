@@ -95,10 +95,9 @@ Case berada di `src/interfaces/cli/cases`.
 | `01.success-without-public-ip.json` | Deployment VM tanpa public IP. |
 | `02.success-with-public-ip.json` | Deployment VM dengan public IP dan static NAT. |
 | `03.success-parallel-acl-rules.json` | Lima ACL rule di-expand dari satu logical step dan berjalan paralel. |
-| `04.rolledback-static-nat.json` | Static NAT gagal; rollback VPC gagal sekali lalu sukses setelah retry. |
-| `05.rolledback-job.json` | ACL rule terus gagal, di-retry, lalu deployment di-rollback. |
+| `04.success-after-two-timeouts-40s.json` | Dua attempt terkena timeout 40 detik, lalu sukses pada attempt ketiga. |
+| `05.success-after-two-delays-40s.json` | Dua attempt terkena delay 40 detik, lalu sukses pada attempt ketiga. |
 | `06.success-after-retry-jobstatus-2.json` | ACL rule mendapat `jobstatus=2`, di-retry, lalu sukses. |
-| `07.rolledback-timeout.json` | Pembuatan subnet melewati timeout, di-retry, lalu deployment di-rollback. |
 
 Nilai yang sama untuk semua step dapat diletakkan di `defaults`. `apiControl` dan `config`
 pada sebuah step akan meng-override bagian yang diperlukan:
@@ -124,6 +123,8 @@ Pada contoh tersebut, `acl-rule` tetap mewarisi `delay` dan `timeout`, tetapi me
 
 - `delay`: waktu tunggu simulasi.
 - `timeout`: batas tunggu simulasi.
+- `delaySequence`: nilai `delay` per attempt.
+- `timeoutSequence`: nilai `timeout` per attempt.
 - `result: 1`: request berhasil.
 - `result: 2`: request gagal.
 
