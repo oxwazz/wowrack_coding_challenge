@@ -1,0 +1,63 @@
+{
+  "description": "Rolled back - Subnet terus timeout sampai retry habis",
+  "jobId": "deploy-vm-without-public-ip",
+  "defaults": {
+    "apiControl": {
+      "delay": 0,
+      "timeout": 0,
+      "result": 1
+    },
+    "config": {
+      "maxRetries": 1,
+      "maxRollbackRetries": 0,
+      "maxTimeout": 30000
+    }
+  },
+  "steps": {
+    "vpc": {
+      "input": {
+        "cidr": "10.20.0.0/16",
+        "name": "wowdev-vpc"
+      }
+    },
+    "subnet": {
+      "input": {
+        "name": "wowdev-subnet",
+        "gateway": "10.20.1.1",
+        "netmask": "255.255.255.0"
+      },
+      "apiControl": {
+        "timeoutSequence": [2, 2, 2]
+      },
+      "config": {
+        "maxTimeout": 1000,
+        "maxRetries": 2
+      }
+    },
+    "acl-list": {
+      "input": {
+        "name": "wowdev-acl"
+      }
+    },
+    "acl-rule": {
+      "input": {
+        "protocol": "tcp",
+        "cidrList": "10.20.1.0/24",
+        "action": "allow",
+        "trafficType": "Ingress",
+        "startPort": 22,
+        "endPort": 22
+      }
+    },
+    "attach-acl": {
+      "input": {}
+    },
+    "vm": {
+      "input": {
+        "name": "wowdev-vm",
+        "serviceOfferingId": "offering-1",
+        "templateId": "template-1"
+      }
+    }
+  }
+}

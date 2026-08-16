@@ -22,7 +22,7 @@ export async function rollbackSuccessfulJobs(
   for (const job of [...ordered].reverse()) {
     if (
       rollbackCandidates.has(job.id)
-      && !(await executor.rollback(jobRunId, job.id, timeoutMs))
+      && !(await executor.rollback(jobRunId, job.id, job.maxTimeout ?? timeoutMs))
     ) {
       failed = true;
     }

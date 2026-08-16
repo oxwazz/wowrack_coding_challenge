@@ -98,6 +98,9 @@ Case berada di `src/interfaces/cli/cases`.
 | `04.success-after-two-timeouts-40s.json` | Dua attempt terkena timeout 40 detik, lalu sukses pada attempt ketiga. |
 | `05.success-after-two-delays-40s.json` | Dua attempt terkena delay 40 detik, lalu sukses pada attempt ketiga. |
 | `06.success-after-retry-jobstatus-2.json` | ACL rule mendapat `jobstatus=2`, di-retry, lalu sukses. |
+| `07.rolled-back-after-timeouts.json` | Seluruh attempt subnet terkena timeout, lalu deployment di-rollback. |
+| `08.rolled-back-after-delays.json` | Seluruh attempt subnet terkena delay, lalu deployment di-rollback. |
+| `09.rolled-back-after-jobstatus-2.json` | Subnet terus mendapat `jobstatus=2`, lalu deployment di-rollback. |
 
 Nilai yang sama untuk semua step dapat diletakkan di `defaults`. `apiControl` dan `config`
 pada sebuah step akan meng-override bagian yang diperlukan:
@@ -199,9 +202,22 @@ Jika semua retry gagal:
 Job tanpa implementasi rollback menjadi `ROLLBACK_SKIPPED`.
 
 Setiap case demo mendefinisikan `maxRetries`, `maxRollbackRetries`, dan `maxTimeout` sendiri
-di `defaults.config`. `maxTimeout` berlaku untuk seluruh attempt eksekusi dan rollback serta
-ditulis dalam milidetik. Timeout menghentikan client menunggu, tetapi tidak menjamin operasi
-remote sudah berhenti.
+di `defaults.config`. Sebuah step atau named instance dapat meng-override nilai tersebut
+melalui `config.maxTimeout`:
+
+```json
+{
+  "defaults": { "config": { "maxTimeout": 30000 } },
+  "steps": {
+    "subnet": { "config": { "maxTimeout": 1000 } }
+  }
+}
+```
+
+Urutan prioritasnya adalah named instance, step, defaults, lalu konfigurasi orchestrator.
+`maxTimeout` berlaku untuk setiap attempt eksekusi dan rollback serta ditulis dalam
+milidetik. Timeout menghentikan client menunggu, tetapi tidak menjamin operasi remote sudah
+berhenti.
 
 ## Request CloudStack
 

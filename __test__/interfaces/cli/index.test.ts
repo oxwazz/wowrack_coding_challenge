@@ -46,6 +46,21 @@ test("loads deployment case labels and order from case files", async () => {
         index: 6,
         description: "Success - Jobstatus 2, retry, lalu sukses",
       },
+      {
+        filename: "07.rolled-back-after-timeouts.json",
+        index: 7,
+        description: "Rolled back - Subnet terus timeout sampai retry habis",
+      },
+      {
+        filename: "08.rolled-back-after-delays.json",
+        index: 8,
+        description: "Rolled back - Subnet terus delay sampai retry habis",
+      },
+      {
+        filename: "09.rolled-back-after-jobstatus-2.json",
+        index: 9,
+        description: "Rolled back - Subnet terus mendapat jobstatus 2 sampai retry habis",
+      },
     ],
   );
 });

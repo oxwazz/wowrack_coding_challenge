@@ -8,6 +8,7 @@ import type {
   StoredJobDefinition,
 } from "../types.js";
 import { buildApiJobGraph } from "./api-job-graph.js";
+import { validateMaxTimeout } from "./timeout.js";
 
 const instanceKeyPattern = /^[a-z0-9][a-z0-9-]*$/;
 
@@ -74,6 +75,10 @@ function resolveStep(
   const maxRollbackRetries = instance?.config?.maxRollbackRetries
     ?? configured.config?.maxRollbackRetries
     ?? deploymentCase.defaults?.config?.maxRollbackRetries;
+  const maxTimeout = instance?.config?.maxTimeout
+    ?? configured.config?.maxTimeout
+    ?? deploymentCase.defaults?.config?.maxTimeout;
+  validateMaxTimeout(maxTimeout, `Deployment step ${runtimeId} config.maxTimeout`);
   const hasApiControl = deploymentCase.defaults?.apiControl !== undefined
     || configured.apiControl !== undefined
     || instance?.apiControl !== undefined;
@@ -91,5 +96,6 @@ function resolveStep(
     ...(hasApiControl ? { apiControl } : {}),
     ...(maxRetries === undefined ? {} : { maxRetries }),
     ...(maxRollbackRetries === undefined ? {} : { maxRollbackRetries }),
+    ...(maxTimeout === undefined ? {} : { maxTimeout }),
   };
 }

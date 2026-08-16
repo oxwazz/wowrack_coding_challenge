@@ -10,6 +10,7 @@ import type {
 import { JobExecutor } from "./job-executor.js";
 import { resolveJobCase } from "./job-definition.js";
 import { Scheduler } from "./scheduler.js";
+import { validateMaxTimeout } from "./timeout.js";
 
 /** High-level facade for creating, executing, and inspecting deployment runs. */
 export class DeploymentOrchestrator {
@@ -38,11 +39,14 @@ export class DeploymentOrchestrator {
   ): Promise<string> {
     await this.store.createJobRun(
       jobRunId,
-      jobs.map((job) => ({
-        ...job,
-        maxRetries: job.maxRetries ?? this.maxRetries,
-        maxRollbackRetries: job.maxRollbackRetries ?? this.maxRollbackRetries,
-      })),
+      jobs.map((job) => {
+        validateMaxTimeout(job.maxTimeout, `Job ${job.id} maxTimeout`);
+        return {
+          ...job,
+          maxRetries: job.maxRetries ?? this.maxRetries,
+          maxRollbackRetries: job.maxRollbackRetries ?? this.maxRollbackRetries,
+        };
+      }),
     );
     return jobRunId;
   }
@@ -87,7 +91,7 @@ export class DeploymentOrchestrator {
   }
 
   runJobRun(jobRunId: string, maxTimeout?: number): Promise<JobRunResult> {
-    validateMaxTimeout(maxTimeout);
+    validateMaxTimeout(maxTimeout, "Run maxTimeout");
     return this.scheduler.run(jobRunId, maxTimeout);
   }
 
@@ -103,17 +107,6 @@ export class DeploymentOrchestrator {
 /** Returns the optional per-attempt timeout configured for a deployment case. */
 export function caseMaxTimeout(deploymentCase: JobCaseDefinition): number | undefined {
   const maxTimeout = deploymentCase.defaults?.config?.maxTimeout;
-  validateMaxTimeout(maxTimeout);
+  validateMaxTimeout(maxTimeout, "Case defaults.config.maxTimeout");
   return maxTimeout;
-}
-
-function validateMaxTimeout(maxTimeout: number | undefined): void {
-  if (
-    maxTimeout !== undefined
-    && (!Number.isFinite(maxTimeout) || maxTimeout < 0)
-  ) {
-    throw new Error(
-      "Case defaults.config.maxTimeout must be a non-negative number in milliseconds",
-    );
-  }
 }

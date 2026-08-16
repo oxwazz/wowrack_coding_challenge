@@ -181,6 +181,69 @@ test("times out an attempt and records timeout history", async () => {
   }
 });
 
+test("applies a job-specific execution timeout before the orchestrator default", async () => {
+  const handlers: HandlerRegistry = {
+    slow: {
+      async run(context) {
+        await context.sleep(100);
+        return null;
+      },
+    },
+  };
+  const orchestrator = new DeploymentOrchestrator({
+    databasePath: ":memory:",
+    handlers,
+    jobTimeoutMs: 1_000,
+  });
+
+  try {
+    const result = await orchestrator.deploy([
+      { id: "slow", type: "slow", dependsOn: [], maxTimeout: 5 },
+    ]);
+    assert.equal(result.jobRun.status, "ROLLED_BACK");
+    assert.equal(result.jobs[0]?.status, "FAILED");
+    assert.match(result.jobs[0]?.error ?? "", /timed out after 5ms/);
+  } finally {
+    await orchestrator.close();
+  }
+});
+
+test("applies a successful job's timeout to its rollback attempts", async () => {
+  const handlers: HandlerRegistry = {
+    resource: {
+      async run() {
+        return { id: "resource-1" };
+      },
+      async rollback(context) {
+        await context.sleep(100);
+      },
+    },
+    failure: {
+      async run() {
+        throw new Error("trigger rollback");
+      },
+    },
+  };
+  const orchestrator = new DeploymentOrchestrator({
+    databasePath: ":memory:",
+    handlers,
+    jobTimeoutMs: 1_000,
+  });
+
+  try {
+    const result = await orchestrator.deploy([
+      { id: "resource", type: "resource", dependsOn: [], maxTimeout: 5 },
+      { id: "failure", type: "failure", dependsOn: ["resource"] },
+    ]);
+    const resource = result.jobs.find((job) => job.jobId === "resource");
+    assert.equal(result.jobRun.status, "ROLLBACK_FAILED");
+    assert.equal(resource?.status, "ROLLBACK_FAILED");
+    assert.match(resource?.error ?? "", /timed out after 5ms/);
+  } finally {
+    await orchestrator.close();
+  }
+});
+
 test("skips unstarted jobs and rolls successful work back in reverse DAG order", async () => {
   const rollbackEvents: string[] = [];
   const handler = {

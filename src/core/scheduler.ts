@@ -19,6 +19,7 @@ export class Scheduler {
     }
     await this.store.setJobRunStatus(jobRunId, "RUNNING");
     const definitions = await this.store.getJobDefinitions(jobRunId);
+    const definitionsById = new Map(definitions.map((job) => [job.id, job]));
     const jobs = await this.store.getJobStepRuns(jobRunId);
     const statuses = new Map(jobs.map((job) => [job.jobId, job.status]));
     const dependents = new Map(definitions.map((job) => [job.id, [] as string[]]));
@@ -68,7 +69,8 @@ export class Scheduler {
       while (failedBy === undefined && ready.length > 0) {
         const jobId = ready.shift()!;
         const controller = new AbortController();
-        const result = this.executor.execute(jobRunId, jobId, controller.signal, timeoutMs)
+        const jobTimeoutMs = definitionsById.get(jobId)?.maxTimeout ?? timeoutMs;
+        const result = this.executor.execute(jobRunId, jobId, controller.signal, jobTimeoutMs)
           .then((outcome) => ({ jobId, outcome }));
         running.set(jobId, { controller, result });
         statuses.set(jobId, "RUNNING");
