@@ -16,6 +16,8 @@ export interface JobDefinition {
   dependsOn: string[];
   /** Number of retries after the first attempt. */
   maxRetries?: number;
+  /** Demo only: force the fake API to succeed starting from this retry number. */
+  demoSuccessOnRetry?: number;
   /** JSON-serializable handler input persisted with the job. */
   input?: JsonValue;
   /** Fake API behavior used by demo cases; kept separate from business input. */
@@ -52,6 +54,8 @@ export interface JobCaseDefaults {
 export interface JobCaseConfig {
   /** Number of retries after the first attempt. */
   maxRetries?: number;
+  /** Demo only: force the fake API to succeed starting from this retry number. */
+  demoSuccessOnRetry?: number;
 }
 
 export interface JobCaseStepInstance {
@@ -81,6 +85,7 @@ export interface JobStepRunRecord {
   status: JobStatus;
   attempt: number;
   maxRetries: number;
+  demoSuccessOnRetry?: number;
   input: JsonValue | null;
   apiControl?: JsonValue;
   result: JsonValue | null;
@@ -116,6 +121,7 @@ export interface JobRunContext {
   jobRunId: string;
   jobId: string;
   attempt: number;
+  demoSuccessOnRetry?: number;
   input: JsonValue | null;
   apiControl?: JsonValue;
   dependencyResults: Readonly<Record<string, JsonValue | null>>;

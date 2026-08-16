@@ -1,5 +1,5 @@
 {
-  "description": "Job gagal, retry, lalu rollback",
+  "description": "Job gagal, lalu sukses pada retry pertama",
   "jobId": "deploy-vm-without-public-ip",
   "defaults": {
     "apiControl": {
@@ -43,7 +43,8 @@
         "result": 2
       },
       "config": {
-        "maxRetries": 2
+        "maxRetries": 2,
+        "demoSuccessOnRetry": 1
       }
     },
     "attach-acl": {

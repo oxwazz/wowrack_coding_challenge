@@ -282,14 +282,25 @@ function optionalInputNumber(input: JsonObject, key: string): number | undefined
 }
 
 /** Extracts fake-API timing and outcome controls while applying safe defaults. */
-function apiControl(context: Pick<JobRunContext, "apiControl" | "input">): ApiParameters {
+function apiControl(
+  context: Pick<
+    JobRunContext,
+    "apiControl" | "attempt" | "demoSuccessOnRetry" | "input"
+  >,
+): ApiParameters {
   // Reading the legacy input location keeps existing programmatic callers compatible.
   const input = asObject(context.input ?? {}, "job input");
   const controlValue = context.apiControl ?? input.apiControl;
   const control = controlValue === undefined ? {} : asObject(controlValue, "apiControl");
+  const demoShouldSucceed = context.demoSuccessOnRetry !== undefined
+    && Number.isInteger(context.demoSuccessOnRetry)
+    && context.demoSuccessOnRetry > 0
+    && context.attempt > context.demoSuccessOnRetry;
   return {
     // Successful completion is the default unless a test case explicitly overrides it.
-    result: typeof control.result === "number" ? control.result : 1,
+    result: demoShouldSucceed
+      ? 1
+      : typeof control.result === "number" ? control.result : 1,
     delay: typeof control.delay === "number" ? control.delay : undefined,
     timeout: typeof control.timeout === "number" ? control.timeout : undefined,
   };

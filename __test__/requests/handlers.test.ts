@@ -64,9 +64,9 @@ test("resolves separate stored DAGs with and without public IP", async () => {
 });
 
 test("loads the five focused deployment cases", async () => {
-  const failedCase = await loadCloudDeploymentCase(join(casesDirectory, "04.failed-job.json"));
+  const failedCase = await loadCloudDeploymentCase(join(casesDirectory, "05.failed-job.json"));
   const parallelAclCase = await loadCloudDeploymentCase(
-    join(casesDirectory, "05.parallel-acl-rules.json"),
+    join(casesDirectory, "03.parallel-acl-rules.json"),
   );
   assert.equal(failedCase.jobId, "deploy-vm-without-public-ip");
   assert.equal(failedCase.defaults?.config?.maxRetries, 1);
@@ -82,6 +82,7 @@ test("loads the five focused deployment cases", async () => {
     result: 2,
   });
   assert.equal(failedCase.steps["acl-rule"]?.config?.maxRetries, 2);
+  assert.equal(failedCase.steps["acl-rule"]?.config?.demoSuccessOnRetry, 1);
   assert.deepEqual(failedCase.steps.vm?.input, {
     name: "wowdev-vm",
     serviceOfferingId: "offering-1",
@@ -127,27 +128,27 @@ test("loads the five focused deployment cases", async () => {
         description: "Deploy VM dengan public IP",
       },
       {
-        filename: "03.slow-subnet.json",
+        filename: "03.parallel-acl-rules.json",
         index: 3,
-        description: "Subnet lambat, cabang ACL lebih dulu",
-      },
-      {
-        filename: "04.failed-job.json",
-        index: 4,
-        description: "Job gagal, retry, lalu rollback",
-      },
-      {
-        filename: "05.parallel-acl-rules.json",
-        index: 5,
         description: "Lima ACL rule berjalan paralel",
+      },
+      {
+        filename: "04.failed-static-nat.json",
+        index: 4,
+        description: "Static NAT gagal, retry, lalu rollback",
+      },
+      {
+        filename: "05.failed-job.json",
+        index: 5,
+        description: "Job gagal, lalu sukses pada retry pertama",
       },
     ],
   );
 });
 
-test("loads a case where the ACL branch finishes before the subnet", async () => {
+test("loads a public-IP case configured to fail static NAT", async () => {
   const deploymentCase = await loadCloudDeploymentCase(
-    join(casesDirectory, "03.slow-subnet.json"),
+    join(casesDirectory, "04.failed-static-nat.json"),
   );
   const jobs = resolveJobCase(
     await loadDeployVmDefinition(deploymentCase.jobId),
@@ -155,35 +156,19 @@ test("loads a case where the ACL branch finishes before the subnet", async () =>
     definitionSteps,
   );
 
-  assert.deepEqual(jobs.find((job) => job.id === "subnet")?.input, {
-    name: "wowdev-subnet",
-    gateway: "10.20.1.1",
-    netmask: "255.255.255.0",
-  });
-  assert.deepEqual(deploymentCase.steps.subnet?.apiControl, { delay: 10 });
-  assert.deepEqual(jobs.find((job) => job.id === "subnet")?.apiControl, {
-    delay: 10, timeout: 0, result: 1,
-  });
-  assert.deepEqual(jobs.find((job) => job.id === "acl-list")?.input, {
-    name: "wowdev-acl",
-  });
-  assert.deepEqual(jobs.find((job) => job.id === "acl-list")?.apiControl, {
-    delay: 0, timeout: 0, result: 1,
-  });
-  assert.deepEqual(jobs.find((job) => job.id === "acl-rule")?.input, {
-    protocol: "tcp",
-    cidrList: "10.20.1.0/24",
-    action: "allow",
-    trafficType: "Ingress",
-    startPort: 22,
-    endPort: 22,
-  });
-  assert.deepEqual(jobs.find((job) => job.id === "acl-rule")?.apiControl, {
-    delay: 0, timeout: 0, result: 1,
+  assert.equal(deploymentCase.jobId, "deploy-vm-with-public-ip");
+  assert.equal(jobs.length, 8);
+  assert.deepEqual(jobs.find((job) => job.id === "static-nat"), {
+    id: "static-nat",
+    type: "static-nat",
+    dependsOn: ["vm", "public-ip"],
+    input: {},
+    apiControl: { delay: 0, timeout: 0, result: 2 },
+    maxRetries: 2,
   });
 });
 
-test("advances ACL list and rule while the slow subnet is still running", async () => {
+test("retries failed static NAT and rolls back its public-IP deployment", async () => {
   const api = await startFakeApi();
   const client = new FakeCloudStackClient({ baseUrl: api.baseUrl });
   const orchestrator = new DeploymentOrchestrator({
@@ -193,58 +178,30 @@ test("advances ACL list and rule while the slow subnet is still running", async 
 
   try {
     const deploymentCase = await loadCloudDeploymentCase(
-      join(casesDirectory, "03.slow-subnet.json"),
+      join(casesDirectory, "04.failed-static-nat.json"),
     );
-    const subnet = deploymentCase.steps.subnet;
-    const vpc = deploymentCase.steps.vpc;
-    assert(subnet !== undefined && vpc !== undefined);
-    subnet.apiControl = { delay: 0.03 };
-    vpc.apiControl = { timeout: 35 };
-    if (deploymentCase.defaults?.config !== undefined) {
-      deploymentCase.defaults.config.maxRetries = 0;
-    }
+    const result = await orchestrator.deployCase(deploymentCase);
+    const jobs = Object.fromEntries(result.jobs.map((job) => [job.jobId, job]));
 
-    const jobRunId = await orchestrator.createJobRunFromCase(deploymentCase);
-    const execution = orchestrator.runJobRun(jobRunId);
-    let observedParallelProgress = false;
-    for (let check = 0; check < 100; check += 1) {
-      const states = Object.fromEntries(
-        (await orchestrator.store.getJobStepRuns(jobRunId))
-          .map((job) => [job.jobId, job.status]),
-      );
-      if (states["acl-rule"] === "SUCCESS") {
-        assert.equal(states.subnet, "RUNNING");
-        observedParallelProgress = true;
-        break;
-      }
-      await new Promise((resolve) => setTimeout(resolve, 1));
-    }
-    assert(observedParallelProgress, "ACL branch did not finish while subnet was running");
-    const result = await execution;
-    assert.equal(result.jobRun.status, "SUCCESS");
+    assert.equal(result.jobRun.status, "ROLLED_BACK");
+    assert.equal(jobs["static-nat"]?.status, "FAILED");
+    assert.equal(jobs["static-nat"]?.attempt, 3);
+    assert.equal(jobs["public-ip"]?.status, "ROLLBACK_SKIPPED");
+    assert.equal(jobs.vm?.status, "ROLLED_BACK");
+    assert.equal(jobs.subnet?.status, "ROLLED_BACK");
+    assert.equal(jobs.vpc?.status, "ROLLED_BACK");
+
     const commands = api.requests.map((url) => url.searchParams.get("command"));
-    const aclListIndex = commands.indexOf("createNetworkACLList");
-    const aclRuleIndex = commands.indexOf("createNetworkACL");
-    const subnetIndex = commands.indexOf("createNetwork");
-    assert(aclListIndex >= 0 && aclListIndex < aclRuleIndex);
-    assert(subnetIndex >= 0);
-
-    const subnetRequest = api.requests.find(
-      (url) => url.searchParams.get("command") === "createNetwork",
-    );
-    const vpcRequest = api.requests.find(
-      (url) => url.searchParams.get("command") === "createVpc",
-    );
-    const aclListRequest = api.requests.find(
-      (url) => url.searchParams.get("command") === "createNetworkACLList",
-    );
-    const aclRuleRequest = api.requests.find(
-      (url) => url.searchParams.get("command") === "createNetworkACL",
-    );
-    assert.equal(subnetRequest?.searchParams.get("delay"), "0.03");
-    assert.equal(vpcRequest?.searchParams.get("timeout"), "35");
-    assert.equal(aclListRequest?.searchParams.get("delay"), "0");
-    assert.equal(aclRuleRequest?.searchParams.get("delay"), "0");
+    assert.equal(commands.filter((command) => command === "enableStaticNat").length, 3);
+    assert(commands.includes("listPublicIpAddresses"));
+    assert(commands.includes("destroyVirtualMachine"));
+    assert(commands.includes("deleteNetwork"));
+    assert(commands.includes("deleteVpc"));
+    for (const request of api.requests.filter(
+      (url) => url.searchParams.get("command") === "enableStaticNat",
+    )) {
+      assert.equal(request.searchParams.get("result"), "2");
+    }
   } finally {
     await orchestrator.close();
     await api.close();
@@ -261,7 +218,7 @@ test("expands one stored ACL step into independently tracked case instances", as
 
   try {
     const deploymentCase = await loadCloudDeploymentCase(
-      join(casesDirectory, "05.parallel-acl-rules.json"),
+      join(casesDirectory, "03.parallel-acl-rules.json"),
     );
     if (deploymentCase.defaults?.config !== undefined) {
       deploymentCase.defaults.config.maxRetries = 0;
@@ -382,10 +339,14 @@ test("turns jobstatus=2 into failure and calls documented rollback APIs", async 
 
   try {
     const deploymentCase = await loadCloudDeploymentCase(
-      join(casesDirectory, "04.failed-job.json"),
+      join(casesDirectory, "05.failed-job.json"),
     );
     if (deploymentCase.defaults?.config !== undefined) {
       deploymentCase.defaults.config.maxRetries = 0;
+    }
+    if (deploymentCase.steps["acl-rule"]?.config !== undefined) {
+      delete deploymentCase.steps["acl-rule"].config.demoSuccessOnRetry;
+      deploymentCase.steps["acl-rule"].config.maxRetries = 0;
     }
     const result = await orchestrator.deployCase(deploymentCase);
     const states = Object.fromEntries(result.jobs.map((job) => [job.jobId, job.status]));
@@ -405,6 +366,37 @@ test("turns jobstatus=2 into failure and calls documented rollback APIs", async 
     assert(
       commands.indexOf("destroyVirtualMachine") < commands.indexOf("deleteNetwork"),
       "VM must be destroyed before its network",
+    );
+  } finally {
+    await orchestrator.close();
+    await api.close();
+  }
+});
+
+test("demo case succeeds when the first retry is executed", async () => {
+  const api = await startFakeApi();
+  const client = new FakeCloudStackClient({ baseUrl: api.baseUrl });
+  const orchestrator = new DeploymentOrchestrator({
+    databasePath: ":memory:",
+    deploymentSteps: createDeploymentSteps(client),
+  });
+
+  try {
+    const deploymentCase = await loadCloudDeploymentCase(
+      join(casesDirectory, "05.failed-job.json"),
+    );
+    const result = await orchestrator.deployCase(deploymentCase);
+    const aclRule = result.jobs.find((job) => job.jobId === "acl-rule");
+    const aclRequests = api.requests.filter(
+      (url) => url.searchParams.get("command") === "createNetworkACL",
+    );
+
+    assert.equal(result.jobRun.status, "SUCCESS");
+    assert.equal(aclRule?.status, "SUCCESS");
+    assert.equal(aclRule?.attempt, 2);
+    assert.deepEqual(
+      aclRequests.map((url) => url.searchParams.get("result")),
+      ["2", "1"],
     );
   } finally {
     await orchestrator.close();
@@ -475,11 +467,9 @@ async function startFakeApi(): Promise<FakeApi> {
       }));
     }
     if (command === "enableStaticNat") {
-      return send({
-        enablestaticnatcallcallresponse: null,
-        enablestaticnatcallresponse: null,
-        enablestaticnatresponse: { success: true },
-      });
+      return send(envelope(url.searchParams.get("result") === "2"
+        ? { errorcode: 500, cserrorcode: 9999, errortext: "Simulated static NAT failure" }
+        : { success: true }));
     }
 
     const resultByCommand: Record<string, JsonValue> = {

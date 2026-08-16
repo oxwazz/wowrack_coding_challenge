@@ -94,9 +94,9 @@ Case berada di `src/interfaces/cli/cases`.
 |---|---|
 | `01.without-public-ip.json` | Deployment VM tanpa public IP. |
 | `02.with-public-ip.json` | Deployment VM dengan public IP dan static NAT. |
-| `03.slow-subnet.json` | Subnet lambat, tetapi cabang ACL tetap berjalan. |
-| `04.failed-job.json` | ACL rule gagal, di-retry, lalu deployment di-rollback. |
-| `05.parallel-acl-rules.json` | Lima ACL rule di-expand dari satu logical step dan berjalan paralel. |
+| `03.parallel-acl-rules.json` | Lima ACL rule di-expand dari satu logical step dan berjalan paralel. |
+| `04.failed-static-nat.json` | Deployment public IP dengan static NAT gagal, di-retry, lalu rollback. |
+| `05.failed-job.json` | ACL rule gagal pada attempt awal, lalu sukses pada retry pertama. |
 
 Nilai yang sama untuk semua step dapat diletakkan di `defaults`. `apiControl` dan `config`
 pada sebuah step akan meng-override bagian yang diperlukan:
@@ -154,6 +154,19 @@ maxRetries = 0 → maksimal 1 attempt
 maxRetries = 1 → maksimal 2 attempts
 maxRetries = 2 → maksimal 3 attempts
 ```
+
+Untuk kebutuhan demo, `config.demoSuccessOnRetry` dapat membuat fake API sukses mulai
+retry tertentu. Contoh berikut gagal pada attempt awal dan sukses pada retry pertama:
+
+```json
+{
+  "apiControl": { "result": 2 },
+  "config": { "maxRetries": 2, "demoSuccessOnRetry": 1 }
+}
+```
+
+Opsi ini hanya memengaruhi `result` simulasi fake API dan tidak mengubah perilaku retry
+ketika tidak dikonfigurasi.
 
 Jika semua retry gagal:
 

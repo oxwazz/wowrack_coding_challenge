@@ -27,19 +27,19 @@ test("loads deployment case labels and order from case files", async () => {
         description: "Deploy VM dengan public IP",
       },
       {
-        filename: "03.slow-subnet.json",
+        filename: "03.parallel-acl-rules.json",
         index: 3,
-        description: "Subnet lambat, cabang ACL lebih dulu",
-      },
-      {
-        filename: "04.failed-job.json",
-        index: 4,
-        description: "Job gagal, retry, lalu rollback",
-      },
-      {
-        filename: "05.parallel-acl-rules.json",
-        index: 5,
         description: "Lima ACL rule berjalan paralel",
+      },
+      {
+        filename: "04.failed-static-nat.json",
+        index: 4,
+        description: "Static NAT gagal, retry, lalu rollback",
+      },
+      {
+        filename: "05.failed-job.json",
+        index: 5,
+        description: "Job gagal, lalu sukses pada retry pertama",
       },
     ],
   );

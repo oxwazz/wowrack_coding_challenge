@@ -88,6 +88,9 @@ export class JobExecutor {
         jobRunId: job.jobRunId,
         jobId: job.jobId,
         attempt: job.attempt,
+        ...(job.demoSuccessOnRetry === undefined
+          ? {}
+          : { demoSuccessOnRetry: job.demoSuccessOnRetry }),
         input: job.input,
         ...(job.apiControl === undefined ? {} : { apiControl: job.apiControl }),
         dependencyResults: await this.store.getDependencyResults(job.jobRunId, job.jobId),

@@ -71,6 +71,9 @@ function resolveStep(
     ?? configured.maxRetries
     ?? deploymentCase.defaults?.config?.maxRetries
     ?? deploymentCase.defaults?.maxRetries;
+  const demoSuccessOnRetry = instance?.config?.demoSuccessOnRetry
+    ?? configured.config?.demoSuccessOnRetry
+    ?? deploymentCase.defaults?.config?.demoSuccessOnRetry;
   const hasApiControl = deploymentCase.defaults?.apiControl !== undefined
     || configured.apiControl !== undefined
     || instance?.apiControl !== undefined;
@@ -87,5 +90,6 @@ function resolveStep(
     ...(input === undefined ? {} : { input }),
     ...(hasApiControl ? { apiControl } : {}),
     ...(maxRetries === undefined ? {} : { maxRetries }),
+    ...(demoSuccessOnRetry === undefined ? {} : { demoSuccessOnRetry }),
   };
 }
