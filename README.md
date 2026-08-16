@@ -106,7 +106,11 @@ pada sebuah step akan meng-override bagian yang diperlukan:
 {
   "defaults": {
     "apiControl": { "delay": 0, "timeout": 0, "result": 1 },
-    "config": { "maxRetries": 1 }
+    "config": {
+      "maxRetries": 1,
+      "maxRollbackRetries": 0,
+      "maxTimeout": 60000
+    }
   },
   "steps": {
     "acl-rule": {
@@ -194,7 +198,10 @@ Jika semua retry gagal:
 
 Job tanpa implementasi rollback menjadi `ROLLBACK_SKIPPED`.
 
-Setiap attempt memiliki timeout global, dengan nilai default 30 detik. Timeout menghentikan client menunggu, tetapi tidak menjamin operasi remote sudah berhenti.
+Setiap case demo mendefinisikan `maxRetries`, `maxRollbackRetries`, dan `maxTimeout` sendiri
+di `defaults.config`. `maxTimeout` berlaku untuk seluruh attempt eksekusi dan rollback serta
+ditulis dalam milidetik. Timeout menghentikan client menunggu, tetapi tidak menjamin operasi
+remote sudah berhenti.
 
 ## Request CloudStack
 

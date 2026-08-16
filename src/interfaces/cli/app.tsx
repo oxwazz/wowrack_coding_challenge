@@ -9,7 +9,10 @@ import { FakeCloudStackClient } from "../../requests/client.js";
 import { createDeploymentSteps } from "../../requests/deployment-steps.js";
 import { CLI_DEFAULTS, cloudStackApiUrl } from "../../constants.js";
 import { errorMessage } from "../../utils.js";
-import { DeploymentOrchestrator } from "../../core/deployment-orchestrator.js";
+import {
+  caseMaxTimeout,
+  DeploymentOrchestrator,
+} from "../../core/deployment-orchestrator.js";
 import type {
   CloudDeploymentCase,
   JobRunResult,
@@ -123,9 +126,6 @@ export async function main(): Promise<void> {
   const orchestrator = new DeploymentOrchestrator({
     databasePath,
     deploymentSteps: createDeploymentSteps(client),
-    jobTimeoutMs: CLI_DEFAULTS.jobTimeoutMs,
-    maxRetries: CLI_DEFAULTS.maxRetries,
-    maxRollbackRetries: CLI_DEFAULTS.maxRollbackRetries,
   });
   try {
     process.exitCode = await runInteractiveCli({
@@ -133,7 +133,6 @@ export async function main(): Promise<void> {
       casesDirectory,
       databasePath,
       endpoint,
-      maxRetries: CLI_DEFAULTS.maxRetries,
     });
   } finally {
     await orchestrator.close();
@@ -230,6 +229,7 @@ function App({
       {screen === "confirm" && deploymentCase !== undefined && caseSummary !== undefined && (
         <Confirm
           caseSummary={caseSummary}
+          deploymentCase={deploymentCase}
           databasePath={databasePath}
           endpoint={endpoint}
           onStart={start}
@@ -349,12 +349,14 @@ function CasePicker({
 /** Shows the selected case configuration and requests deployment confirmation. */
 function Confirm({
   caseSummary,
+  deploymentCase,
   databasePath,
   endpoint,
   onStart,
   onBack,
 }: {
   caseSummary: CloudDeploymentCaseSummary;
+  deploymentCase: CloudDeploymentCase;
   databasePath: string;
   endpoint: string;
   onStart: () => void;
@@ -371,7 +373,10 @@ function Confirm({
   return (
     <Panel title="Konfirmasi deployment">
       <SummaryRow label="Case" value={caseSummary.description} />
-      <SummaryRow label="Global timeout" value={`${CLI_DEFAULTS.jobTimeoutMs} ms`} />
+      <SummaryRow
+        label="Max timeout"
+        value={formatMaxTimeout(caseMaxTimeout(deploymentCase))}
+      />
       <SummaryRow label="Database" value={databasePath} />
       <SummaryRow label="API" value={endpoint} />
       <Box marginTop={1}>
@@ -382,6 +387,10 @@ function Confirm({
       <Help>←/→ pilih · Enter konfirmasi · Esc kembali</Help>
     </Panel>
   );
+}
+
+function formatMaxTimeout(maxTimeout: number | undefined): string {
+  return maxTimeout === undefined ? "-" : `${maxTimeout} ms`;
 }
 
 /** Creates, executes, and periodically refreshes the live state of a new job run. */
@@ -409,6 +418,7 @@ function Runner({
     // Keep the orchestration promise independent from React's synchronous effect callback.
     void (async () => {
       try {
+        const maxTimeout = caseMaxTimeout(deploymentCase);
         const id = await orchestrator.createJobRunFromCase(deploymentCase);
         if (!mounted) return;
         setJobRunId(id);
@@ -420,7 +430,7 @@ function Runner({
         await refresh();
         // SQLite is the source of truth, so the UI polls persisted state during execution.
         refreshTimer = setInterval(() => void refresh().catch(onError), 200);
-        const result = await orchestrator.runJobRun(id);
+        const result = await orchestrator.runJobRun(id, maxTimeout);
         if (!mounted) return;
         await refresh();
         onComplete(result, performance.now() - startedAt);

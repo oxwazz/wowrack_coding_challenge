@@ -8,6 +8,7 @@ export async function rollbackSuccessfulJobs(
   executor: JobExecutor,
   jobRunId: string,
   definitions?: JobDefinition[],
+  timeoutMs?: number,
 ): Promise<void> {
   await store.setJobRunStatus(jobRunId, "ROLLING_BACK");
   const ordered = definitions ?? await store.getJobDefinitions(jobRunId);
@@ -19,7 +20,10 @@ export async function rollbackSuccessfulJobs(
   );
   let failed = false;
   for (const job of [...ordered].reverse()) {
-    if (rollbackCandidates.has(job.id) && !(await executor.rollback(jobRunId, job.id))) {
+    if (
+      rollbackCandidates.has(job.id)
+      && !(await executor.rollback(jobRunId, job.id, timeoutMs))
+    ) {
       failed = true;
     }
   }

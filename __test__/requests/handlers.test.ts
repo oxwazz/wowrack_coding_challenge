@@ -59,6 +59,7 @@ test("resolves separate stored DAGs with and without public IP", async () => {
     input: {},
     apiControl: { delay: 0, timeout: 0, result: 1 },
     maxRetries: 1,
+    maxRollbackRetries: 0,
   });
   assert.deepEqual(withPublicIp.at(-1)?.dependsOn, ["vm", "public-ip"]);
 });
@@ -82,12 +83,14 @@ test("loads the focused deployment cases", async () => {
   assert.deepEqual(timeoutCase.steps["acl-rule"]?.config, {
     maxRetries: 2,
   });
+  assert.equal(timeoutCase.defaults?.config?.maxTimeout, 60_000);
   assert.deepEqual(delayCase.steps["acl-rule"]?.apiControl, {
     delaySequence: [40, 40, 0],
   });
   assert.deepEqual(delayCase.steps["acl-rule"]?.config, {
     maxRetries: 2,
   });
+  assert.equal(delayCase.defaults?.config?.maxTimeout, 60_000);
   assert.deepEqual(retryStatusCase.steps["acl-rule"]?.apiControl, {
     resultSequence: [2, 1],
   });
@@ -346,6 +349,40 @@ test("timing sequence cases succeed after two retries", async () => {
       await orchestrator.close();
       await api.close();
     }
+  }
+});
+
+test("deployment case overrides the orchestrator attempt timeout", async () => {
+  const api = await startFakeApi();
+  const client = new FakeCloudStackClient({ baseUrl: api.baseUrl });
+  const orchestrator = new DeploymentOrchestrator({
+    databasePath: ":memory:",
+    deploymentSteps: createDeploymentSteps(client),
+    jobTimeoutMs: 5,
+  });
+
+  try {
+    const deploymentCase = await loadCloudDeploymentCase(
+      join(casesDirectory, "01.success-without-public-ip.json"),
+    );
+    deploymentCase.defaults ??= {};
+    deploymentCase.defaults.config = {
+      ...deploymentCase.defaults.config,
+      maxRetries: 0,
+      maxTimeout: 100,
+    };
+    deploymentCase.steps.subnet!.apiControl = { delay: 0.02 };
+
+    const result = await orchestrator.deployCase(deploymentCase);
+
+    assert.equal(result.jobRun.status, "SUCCESS");
+    assert.equal(
+      result.jobs.find(({ jobId }) => jobId === "subnet")?.status,
+      "SUCCESS",
+    );
+  } finally {
+    await orchestrator.close();
+    await api.close();
   }
 });
 

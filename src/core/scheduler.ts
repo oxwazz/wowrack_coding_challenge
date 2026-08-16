@@ -12,7 +12,7 @@ export class Scheduler {
     private readonly executor: JobExecutor,
   ) {}
 
-  async run(jobRunId: string): Promise<JobRunResult> {
+  async run(jobRunId: string, timeoutMs?: number): Promise<JobRunResult> {
     const jobRun = await this.store.getJobRun(jobRunId);
     if (jobRun.status !== "PENDING") {
       throw new Error(`Job run ${jobRunId} cannot be started: ${jobRun.status}`);
@@ -68,7 +68,7 @@ export class Scheduler {
       while (failedBy === undefined && ready.length > 0) {
         const jobId = ready.shift()!;
         const controller = new AbortController();
-        const result = this.executor.execute(jobRunId, jobId, controller.signal)
+        const result = this.executor.execute(jobRunId, jobId, controller.signal, timeoutMs)
           .then((outcome) => ({ jobId, outcome }));
         running.set(jobId, { controller, result });
         statuses.set(jobId, "RUNNING");
@@ -94,7 +94,13 @@ export class Scheduler {
     if (failedBy === undefined) {
       await this.store.setJobRunStatus(jobRunId, "SUCCESS");
     } else {
-      await rollbackSuccessfulJobs(this.store, this.executor, jobRunId, definitions);
+      await rollbackSuccessfulJobs(
+        this.store,
+        this.executor,
+        jobRunId,
+        definitions,
+        timeoutMs,
+      );
     }
     return {
       jobRun: await this.store.getJobRun(jobRunId),

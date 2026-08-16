@@ -8,7 +8,9 @@
       "result": 1
     },
     "config": {
-      "maxRetries": 1
+      "maxRetries": 1,
+      "maxRollbackRetries": 0,
+      "maxTimeout": 30000
     }
   },
   "steps": {

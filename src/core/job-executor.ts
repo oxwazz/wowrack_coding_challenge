@@ -22,6 +22,7 @@ export class JobExecutor {
     jobRunId: string,
     jobId: string,
     cancellationSignal: AbortSignal,
+    timeoutMs: number = this.timeoutMs,
   ): Promise<JobExecutionOutcome> {
     while (true) {
       const current = await this.store.getJobStepRun(jobRunId, jobId);
@@ -30,7 +31,7 @@ export class JobExecutor {
         status: "RUNNING", attempt, error: null,
       });
       try {
-        const result = await this.runAttempt(job, cancellationSignal);
+        const result = await this.runAttempt(job, cancellationSignal, timeoutMs);
         await this.store.transitionJob(jobRunId, jobId, {
           status: "SUCCESS", result, error: null,
         });
@@ -50,7 +51,11 @@ export class JobExecutor {
     }
   }
 
-  async rollback(jobRunId: string, jobId: string): Promise<boolean> {
+  async rollback(
+    jobRunId: string,
+    jobId: string,
+    timeoutMs: number = this.timeoutMs,
+  ): Promise<boolean> {
     const initial = await this.store.getJobStepRun(jobRunId, jobId);
     const rollback = this.handlers[initial.type]?.rollback;
     if (rollback === undefined) {
@@ -70,7 +75,7 @@ export class JobExecutor {
         status: "ROLLING_BACK", error: null,
       });
       try {
-        await this.withTimeout(jobId, new AbortController().signal, async (signal) => {
+        await this.withTimeout(jobId, new AbortController().signal, timeoutMs, async (signal) => {
           await rollback({
             jobRunId,
             jobId,
@@ -96,8 +101,12 @@ export class JobExecutor {
     }
   }
 
-  private async runAttempt(job: JobStepRunRecord, signal: AbortSignal): Promise<JsonValue> {
-    return this.withTimeout(job.jobId, signal, async (attemptSignal) =>
+  private async runAttempt(
+    job: JobStepRunRecord,
+    signal: AbortSignal,
+    timeoutMs: number,
+  ): Promise<JsonValue> {
+    return this.withTimeout(job.jobId, signal, timeoutMs, async (attemptSignal) =>
       this.handlers[job.type]!.run({
         jobRunId: job.jobRunId,
         jobId: job.jobId,
@@ -113,6 +122,7 @@ export class JobExecutor {
   private async withTimeout<T>(
     jobId: string,
     externalSignal: AbortSignal,
+    timeoutMs: number,
     operation: (signal: AbortSignal) => Promise<T>,
   ): Promise<T> {
     const controller = new AbortController();
@@ -120,11 +130,11 @@ export class JobExecutor {
     let timer: NodeJS.Timeout | undefined;
     const timeout = new Promise<never>((_resolve, reject) => {
       timer = setTimeout(() => {
-        const error = new Error(`Job ${jobId} timed out after ${this.timeoutMs}ms`);
+        const error = new Error(`Job ${jobId} timed out after ${timeoutMs}ms`);
         error.name = "TimeoutError";
         controller.abort(error);
         reject(error);
-      }, this.timeoutMs);
+      }, timeoutMs);
       timer.unref();
     });
     try {

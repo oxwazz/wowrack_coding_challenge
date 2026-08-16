@@ -72,8 +72,10 @@ export class DeploymentOrchestrator {
     deploymentCase: JobCaseDefinition,
     jobRunId: string = randomUUID(),
   ): Promise<JobRunResult> {
+    const maxTimeout = caseMaxTimeout(deploymentCase);
     return this.runJobRun(
       await this.createJobRunFromCase(deploymentCase, jobRunId),
+      maxTimeout,
     );
   }
 
@@ -84,8 +86,9 @@ export class DeploymentOrchestrator {
     return this.runJobRun(await this.createJobRun(jobs, jobRunId));
   }
 
-  runJobRun(jobRunId: string): Promise<JobRunResult> {
-    return this.scheduler.run(jobRunId);
+  runJobRun(jobRunId: string, maxTimeout?: number): Promise<JobRunResult> {
+    validateMaxTimeout(maxTimeout);
+    return this.scheduler.run(jobRunId, maxTimeout);
   }
 
   resetDatabase(): Promise<void> {
@@ -94,5 +97,23 @@ export class DeploymentOrchestrator {
 
   close(): Promise<void> {
     return this.store.close();
+  }
+}
+
+/** Returns the optional per-attempt timeout configured for a deployment case. */
+export function caseMaxTimeout(deploymentCase: JobCaseDefinition): number | undefined {
+  const maxTimeout = deploymentCase.defaults?.config?.maxTimeout;
+  validateMaxTimeout(maxTimeout);
+  return maxTimeout;
+}
+
+function validateMaxTimeout(maxTimeout: number | undefined): void {
+  if (
+    maxTimeout !== undefined
+    && (!Number.isFinite(maxTimeout) || maxTimeout < 0)
+  ) {
+    throw new Error(
+      "Case defaults.config.maxTimeout must be a non-negative number in milliseconds",
+    );
   }
 }

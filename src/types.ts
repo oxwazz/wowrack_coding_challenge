@@ -46,9 +46,14 @@ export interface JobDefinitionRecord extends StoredJobDefinition {
 
 export interface JobCaseDefaults {
   apiControl?: JsonObject;
-  config?: JobCaseConfig;
+  config?: JobCaseDefaultsConfig;
   /** @deprecated Use `config.maxRetries`. */
   maxRetries?: number;
+}
+
+export interface JobCaseDefaultsConfig extends JobCaseConfig {
+  /** Case-wide timeout in milliseconds for each run or rollback attempt. */
+  maxTimeout?: number;
 }
 
 export interface JobCaseConfig {
@@ -210,5 +215,4 @@ export interface InteractiveCliOptions {
   casesDirectory: string;
   databasePath: string;
   endpoint: string;
-  maxRetries: number;
 }
