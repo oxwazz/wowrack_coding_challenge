@@ -23,6 +23,12 @@
         "name": "wowdev-subnet",
         "gateway": "10.20.1.1",
         "netmask": "255.255.255.0"
+      },
+      "apiControl": {
+        "result": 2
+      },
+      "config": {
+        "maxRetries": 1
       }
     },
     "acl-list": {
@@ -38,12 +44,6 @@
         "trafficType": "Ingress",
         "startPort": 22,
         "endPort": 22
-      },
-      "apiControl": {
-        "result": 2
-      },
-      "config": {
-        "maxRetries": 2
       }
     },
     "attach-acl": {
