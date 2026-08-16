@@ -132,6 +132,31 @@ test("normalizes migration history created before the two-file squash", async ()
   }
 });
 
+test("rejects partially applied squashed migration history", async () => {
+  const databasePath = temporaryDatabasePath("partial-squashed-migrations");
+  try {
+    const first = new OrchestratorStore(databasePath);
+    await first.ready;
+    await sql`
+      INSERT INTO kysely_migration (name, timestamp)
+      VALUES ('003_api_id_definitions', ${new Date().toISOString()})
+    `.execute(first.database);
+    await first.close();
+
+    const second = new OrchestratorStore(databasePath);
+    try {
+      await assert.rejects(
+        second.ready,
+        /Cannot normalize partially applied squashed migrations/,
+      );
+    } finally {
+      await second.database.destroy();
+    }
+  } finally {
+    removeDatabase(databasePath);
+  }
+});
+
 test("rolls schema and reference data back one migration at a time", async () => {
   const store = new OrchestratorStore(":memory:");
   try {

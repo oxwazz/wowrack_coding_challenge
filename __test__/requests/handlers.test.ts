@@ -145,7 +145,10 @@ test("loads the focused deployment cases", async () => {
   assert.deepEqual(rollbackAclRuleCase.steps["acl-rule"]?.apiControl, { result: 2 });
   assert.equal(rollbackAclRuleCase.defaults?.config?.maxRollbackRetries, 4);
   assert.equal(rollbackStaticNatCase.jobId, "deploy-vm-with-public-ip");
-  assert.deepEqual(rollbackStaticNatCase.steps["static-nat"]?.apiControl, { result: 2 });
+  assert.deepEqual(rollbackStaticNatCase.steps["static-nat"]?.apiControl, {
+    timeout: 2,
+    result: 2,
+  });
   assert.equal(rollbackStaticNatCase.defaults?.config?.maxRollbackRetries, 4);
   assert.deepEqual(rollbackAclRuleCase.steps.vm?.apiControl, {
     rollbackResultSequence: [2, 2, 1],
