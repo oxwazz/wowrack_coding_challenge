@@ -1,0 +1,16 @@
+{
+  "name": "deployment-orchestrator-presentation",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "slidev slides.md --open",
+    "build": "slidev build slides.md",
+    "export:pdf": "slidev export slides.md --format pdf --output deployment-orchestrator.pdf",
+    "export:pptx": "slidev export slides.md --format pptx --output deployment-orchestrator.pptx"
+  },
+  "devDependencies": {
+    "@slidev/cli": "latest",
+    "@slidev/theme-default": "latest",
+    "playwright-chromium": "latest"
+  }
+}
