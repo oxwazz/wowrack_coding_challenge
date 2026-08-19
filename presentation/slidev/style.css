@@ -457,3 +457,48 @@ html, body, #app {
 .core-file-map > div { border-bottom: 2px solid var(--od-blue); padding: 8px 4px; display: flex; flex-direction: column; }
 .core-file-map b { color: var(--od-white); font-size: .61rem; }
 .core-file-map code { color: #7f8995; font-size: .5rem; margin-top: 3px; }
+
+/* Feature and improvement summary slides */
+.bullet-columns {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 22px;
+  margin-top: 26px;
+}
+.bullet-panel {
+  border: 1px solid var(--od-border);
+  border-radius: 16px;
+  background: linear-gradient(145deg, rgba(44, 49, 58, .96), rgba(40, 44, 52, .9));
+  padding: 22px 26px 18px;
+}
+.bullet-panel.feature-panel { border-top: 3px solid var(--od-blue); }
+.bullet-panel.improve-panel { border-top: 3px solid var(--od-yellow); }
+.bullet-panel h3 {
+  font-size: 1rem;
+  margin-bottom: 15px;
+}
+.bullet-panel ul {
+  margin: 0;
+  padding-left: 1.1rem;
+}
+.bullet-panel li {
+  color: #98a3af;
+  font-size: .74rem;
+  line-height: 1.45;
+  margin-bottom: 12px;
+  padding-left: 4px;
+}
+.bullet-panel li::marker { color: var(--od-blue); }
+.improve-panel li::marker { color: var(--od-yellow); }
+.bullet-panel li b { color: var(--od-white); }
+.compact-strip { margin-top: 20px; padding: 13px 18px; }
+.priority-note {
+  margin-top: 20px;
+  border-left: 3px solid var(--od-yellow);
+  border-radius: 8px;
+  background: rgba(229,192,123,.055);
+  color: #9ba5b1;
+  font-size: .72rem;
+  padding: 13px 17px;
+}
+.priority-note b { color: var(--od-yellow); }
