@@ -33,8 +33,151 @@ defaults:
 <div class="cover-orbit orbit-b"></div>
 
 <!--
-Deck ini fokus pada execution engine di src/core. Narasinya selalu: data masuk dalam bentuk apa, diubah oleh modul mana, lalu keluar dalam bentuk apa.
+Deck ini fokus pada execution engine di src/core. Narasinya selalu: data masuk dalam bentuk apa, diubah oleh modul mana, lalu keluar dalam bentuk apa.dddddd
+
+
+
+
+
+
+
+
+
+
+
+
+
+dfsdf
+\sdf
+
+sdf
+
+sdf
+s
+df
+s
+dfsdf
+s
+df
+s
+df
+s
+df
+s
+df
+sd
+f
+sd
+ffsdfs
+
+sdfs
+
+
+
+sdfsdf
 -->
+
+---
+layout: two-cols-header
+transition: none
+---
+::left::
+```ts
+type JobCaseDefinition = {
+  jobId: string
+  defaults?: {
+    config?: { maxTimeout?: number }
+  }
+  steps: Record<string, JobCaseStep>
+}
+```
+
+---
+layout: two-cols-header
+transition: none
+---
+::left::
+```ts
+function createDeploymentSteps(client: FakeCloudStackClient) {
+    return {
+        "vpc":        { dependsOn: [],                     run() {}, rollback() {} },
+        "subnet":     { dependsOn: ["vpc"],                run() {}, rollback() {} },
+        "acl-list":   { dependsOn: ["vpc"],                run() {} },
+        "acl-rule":   { dependsOn: ["acl-list"],           run() {} },
+        "attach-acl": { dependsOn: ["subnet", "acl-list"], run() {} },
+        "vm":         { dependsOn: ["subnet"],             run() {}, rollback() {} },
+        "public-ip":  { dependsOn: [],                     run() {} },
+        "static-nat": { dependsOn: ["vm", "public-ip"],    run() {} },
+    } 
+}
+```
+
+
+```mermaid
+%%{init: {
+  "themeVariables": {
+    "fontSize": "14px"
+  },
+  "flowchart": {
+    "nodeSpacing": 15,
+    "rankSpacing": 40,
+    "padding": 10
+  }
+}}%%
+
+flowchart LR
+    VPC["vpc"] --> SUB["subnet"]
+    VPC --> ACL["acl-list"]
+    ACL --> RULE["acl-rule × N"]
+    SUB --> ATT["attach-acl"]
+    ACL --> ATT
+    SUB --> VM["vm"]
+    IP["public-ip"] --> NAT["static-nat"]
+    VM --> NAT
+
+    classDef root fill:#282c34,stroke:#61afef,color:#e6edf3,stroke-width:1px,font-size:14px;
+    classDef work fill:#282c34,stroke:#98c379,color:#e6edf3,stroke-width:1px,font-size:14px;
+    classDef fan fill:#282c34,stroke:#c678dd,color:#e6edf3,stroke-width:1px,font-size:14px;
+
+    class VPC,IP root;
+    class SUB,ACL,ATT,VM,NAT work;
+    class RULE fan;
+```
+
+```md {1|2-3|4}
+| id                            | name          | definition                                                             |
+|-------------------------------|---------------|------------------------------------------------------------------------|
+| deploy-vm-without-public-ip   | ...           | [vpc, subnet, acl-list, acl-rule, attach-acl, vm]                       |
+| deploy-vm-with-public-ip      | ...           | [vpc, subnet, acl-list, acl-rule, attach-acl, vm, public-ip, static-nat] |
+| deploy-vpc-with-acl-rules     | ...           | [vpc, acl-list, acl-rule]                                               |
+| deploy-vm-with-missing-subnet | ...           | [vpc, acl-list, vm]                                                     |
+| deploy-vm-with-unknown-steps  | ...           | [vpc-new, acl-list, vm-new]                                             |
+```
+
+
+
+```ts {hide|none}
+type JobCaseDefinition = {
+  jobId: string
+  defaults?: {
+    config?: { maxTimeout?: number }
+  }
+  steps: Record<string, JobCaseStep>
+}
+```
+
+
+fgh 
+
+```ts
+type JobCaseDefinition = {
+  jobId: string
+  defaults?: {
+    config?: { maxTimeout?: number }
+  }
+  steps: Record<string, JobCaseStep>
+}
+```
 
 ---
 layout: default
@@ -250,7 +393,7 @@ layout: default
 <div class="graph-stage core-graph mt-3">
 
 ```mermaid
-flowchart LR
+flowchart LR 
   VPC["vpc"] --> SUB["subnet"]
   VPC --> ACL["acl-list"]
   ACL --> RULE["acl-rule × N"]
