@@ -32,6 +32,10 @@ defaults:
 <div class="h-3"></div>
 Halim + Aditya
 
+<!--
+Kami, Halim dan Aditya, akan mempresentasikan solusi untuk Wowrack Coding Challenge dengan topik VM Deployment. Dalam presentasi ini, kami akan menjelaskan pendekatan yang digunakan, alur proses deployment, teknologi yang dipilih, serta hasil implementasinya.
+-->
+
 ---
 src: ./overview.md
 ---
