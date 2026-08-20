@@ -5,9 +5,9 @@ layout: default
 <div class="slide-kicker">LIMITATIONS & FUTURE IMPROVEMENTS</div>
 
 
-# Kekurangan & Peluang <span>Improvement</span>
+# Batasan & Peluang <span>Improvement</span>
 <div class="bullet-panel improve-panel">
-<h3>For Next Iteration: </h3>
+<h3>Improvement selanjutnya: </h3>
 <ul>
 <div v-click>
   <li><b>Belum ada resume otomatis</b> untuk melanjutkan run setelah process crash atau restart.</li>

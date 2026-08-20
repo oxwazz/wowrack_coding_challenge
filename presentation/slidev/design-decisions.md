@@ -17,7 +17,13 @@ layout: default
 
 [//]: # (- kami menemukan setidaknya 3 pendekatan: fully declarative, code-only, id-only.)
 
-Saat mengerjakan coding challenge ini, saya dan Mas Adit berdiskusi dan mencoba memikirkan pendekatan yang paling cocok untuk menyelesaikan challenge tersebut. Kami mempertimbangkan bagaimana setiap pendekatan dapat diimplementasikan, seberapa mudah logic-nya dipahami, serta bagaimana nantinya solusi tersebut dapat dikembangkan jika kebutuhannya bertambah. Dari hasil diskusi dan eksplorasi tersebut, kami menemukan setidaknya tiga pendekatan yang dapat digunakan, yaitu Fully Declarative, Code-Only, dan ID-Only. Masing-masing pendekatan memiliki cara kerja, kelebihan, dan kekurangannya sendiri yang kemudian kami pertimbangkan sebelum menentukan pendekatan yang akan digunakan.
+Saat mengerjakan coding challenge ini, saya dan Mas Adit berdiskusi dan mencoba memikirkan pendekatan yang paling cocok untuk menyelesaikan challenge tersebut. 
+
+Kami mempertimbangkan bagaimana setiap pendekatan dapat diimplementasikan, seberapa mudah logic-nya dipahami, serta bagaimana nantinya solusi tersebut dapat dikembangkan jika kebutuhannya bertambah. 
+
+Dari hasil diskusi dan eksplorasi tersebut, kami menemukan setidaknya tiga pendekatan yang dapat digunakan, yaitu Fully Declarative, Code-Only, dan ID-Only. 
+
+Masing-masing pendekatan memiliki cara kerja, kelebihan, dan kekurangannya sendiri yang kemudian kami pertimbangkan sebelum menentukan pendekatan yang akan digunakan.
 -->
 
 ---
@@ -42,8 +48,8 @@ layout: two-cols-header
       "run": {
         "command": "createVpc",
         "input": {
-          "cidr": "$case.vpc.cidr",
-          "name": "$case.vpc.name"
+          "cidr": "$this.vpc.cidr",
+          "name": "$this.vpc.name"
         }
       },
       "rollback": {
@@ -60,9 +66,9 @@ layout: two-cols-header
         "command": "createNetwork",
         "input": {
           "vpcid": "$jobs.vpc.result.id",
-          "name": "$case.subnet.name",
-          "gateway": "$case.subnet.gateway",
-          "netmask": "$case.subnet.netmask"
+          "name": "$this.subnet.name",
+          "gateway": "$this.subnet.gateway",
+          "netmask": "$this.subnet.netmask"
         }
       },
       "rollback": {
@@ -79,8 +85,8 @@ layout: two-cols-header
         "command": "deployVirtualMachine",
         "input": {
           "networkids": "$jobs.subnet.result.id",
-          "templateid": "$case.vm.templateId",
-          "serviceofferingid": "$case.vm.serviceOfferingId"
+          "templateid": "$this.vm.templateId",
+          "serviceofferingid": "$this.vm.serviceOfferingId"
         }
       },
       "rollback": {
@@ -101,7 +107,7 @@ layout: two-cols-header
 kelebihan:
 - Mudah dibaca — flow terlihat langsung dari JSON.
 - Tidak perlu hardcode flow — tidak perlu banyak if, await, try/catch, dan rollback manual di kode.
-- hanya butuh 1 file definition
+- hanya butuh file definition
 
 kekurangan:
 - Kurang fleksibel untuk logic kompleks — branching/dynamic flow lebih sulit.
@@ -119,6 +125,15 @@ kekurangan:
 [//]: # (- susah dimaintain karena seperti membuat bahasa pemrograman sendiri akhirnya.)
 
 [//]: # (- belum lagi debugging, akan sulit untuk mencari issuenya.)
+
+Alurnya kurang lebih seperti ini:
+- Semua workflow didefinisikan di dalam definition, mulai dari dependency, command yang dijalankan, input, sampai rollback.
+- Engine membaca dependsOn untuk menentukan urutan eksekusi job.
+- Contohnya, vpc dijalankan terlebih dahulu karena tidak punya dependency.
+- Setelah vpc selesai, hasilnya bisa direferensikan oleh subnet melalui $jobs.vpc.result.id.
+- Setelah subnet selesai, barulah vm bisa dijalankan.
+- Kalau terjadi kegagalan, engine membaca bagian rollback untuk mengembalikan resource yang sudah dibuat sebelumnya.
+Jadi intinya, engine hanya bertugas membaca dan mengeksekusi definition, sedangkan hampir seluruh aturan workflow sudah didefinisikan secara declarative.
 
 Saya tidak memilih pendekatan ini karena.
 
@@ -178,16 +193,25 @@ const definitions = {
 <div v-click>
 
 kelebihan:
-- simpel karena di db hanya menyimpan definition id saja
-- semua logic ada di code. mau sekomplex apapun harusnya bisa dihandle
+- Simpel - karena di database hanya perlu menyimpan definition_id.
+- Logic lebih fleksibel - karena semuanya ditulis langsung di code.
+- Mudah menangani logic kompleks - karena tidak dibatasi oleh format atau aturan definition engine.
 
 kekurangan:
-- terlalu statis. tiap ada kombinasi baru butuh handle baru di kodingan.
-- akan banyak redudansi code. karena kemiripan kombinasi yang dibuat
+- Terlalu statis - setiap ada kombinasi workflow baru perlu menambahkan definition baru di code.
+- Banyak redundansi code - karena antar-definition kemungkinan memiliki banyak job yang sama.
 
 </div>
 
 <!--
+Alurnya cukup sederhana:
+- Di database kita hanya menyimpan definition_id.
+- definition_id tersebut digunakan untuk mencari definition yang ada di code.
+- Misalnya deploy-vm, maka engine menjalankan rangkaian job untuk deploy VM biasa.
+- Kalau deploy-vm-with-public-ip, engine menjalankan definition yang sudah ditambahkan job public-ip dan static-nat.
+- Semua dependency, run, dan rollback ditulis langsung di code.
+Jadi intinya, database hanya menentukan definition mana yang dipakai, sedangkan seluruh logic workflow ada di code.
+
 Saya juga tidak memilih pendekatan ini karena meskipun implementasinya simpel dan fleksibel dari sisi coding, pendekatan ini akan menjadi terlalu statis ketika jumlah workflow dan kombinasinya bertambah. Setiap ada kombinasi baru, kita perlu menambahkan handling baru di code.
 
 Selain itu, karena beberapa workflow kemungkinan memiliki step yang mirip, akan muncul cukup banyak redundansi code. Dalam jangka panjang, semakin banyak kombinasi yang perlu didukung, semakin banyak pula code yang harus ditambahkan dan di-maintain. Jadi, pendekatan ini cukup mudah untuk kebutuhan sederhana, tetapi kurang scalable dan kurang nyaman untuk dikembangkan ketika variasi workflow semakin banyak.
@@ -196,6 +220,8 @@ Selain itu, karena beberapa workflow kemungkinan memiliki step yang mirip, akan 
 ---
 layout: two-cols-header
 ---
+
+<div class="slide-kicker">DESIGN DECISIONS</div>
 
 # 3. Pendekatan <span>ID-Only</span>
 
@@ -238,14 +264,22 @@ kelebihan:
 kekurangan:
 - Fleksibilitas lebih terbatas 
 - Konfigurasi job ada di code
-- Dependency bersifat tetap
 - Step baru perlu ditambahkan ke registry
 - Definition tidak menyimpan detail job
-- Custom behavior per workflow lebih terbatas 
 
 </div>
 
 <!--
+Untuk pendekatan ini:
+
+- Di database, definition hanya menyimpan kumpulan ID job yang ingin dijalankan.
+- Detail setiap job seperti dependency, run, dan rollback tetap berada di code.
+- Engine membaca daftar ID dari database, kemudian mencocokkannya dengan job yang tersedia di code.
+- Untuk membuat kombinasi workflow baru, kita cukup menyusun ulang atau menambahkan ID job di definition, tanpa membuat seluruh workflow dari awal.
+
+Intinya, database menentukan job apa yang dijalankan, sedangkan code menentukan bagaimana job tersebut dijalankan.
+
+
 kelebihan:
 - Lebih simpel — definition di DB cukup berisi daftar ID job yang akan dijalankan
 - Mudah direuse — job yang sama bisa dipakai oleh banyak definition tanpa copy-paste.
@@ -254,11 +288,8 @@ kelebihan:
 kekurangan:
 - Fleksibilitas lebih terbatas — tapi masih cukup selama job yang dibutuhkan sudah terdaftar.
 - Konfigurasi job ada di code — tapi ini membuat behavior lebih terkontrol dan mudah dilacak.
-- Dependency bersifat tetap — tapi justru membuat aturan antar-job lebih konsisten.
 - Step baru perlu ditambahkan ke registry — tapi prosesnya sederhana dan hanya dilakukan di satu tempat.
 - Definition tidak menyimpan detail job — tapi hasilnya definition jadi lebih ringkas dan mudah dibaca.
-- Custom behavior per workflow lebih terbatas — tapi untuk kebanyakan workflow, reuse behavior yang sama sudah cukup.
-
 
 Untuk challenge ini, kami lebih memilih pendekatan ini karena implementasinya lebih sederhana dan alur logic-nya lebih mudah dipahami. Setiap definition cukup menentukan ID dari job yang dibutuhkan, sedangkan detail seperti dependency, proses run, dan rollback tetap dikelola di satu tempat. 
 

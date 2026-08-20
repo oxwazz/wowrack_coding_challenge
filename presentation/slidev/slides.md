@@ -26,7 +26,7 @@ defaults:
 
 ---
 
-# VM Deployment <span>Orchestrator</span>
+# VM <span>Deployment</span>
 
 ### Wowrack Coding Challenge
 <div class="h-3"></div>
