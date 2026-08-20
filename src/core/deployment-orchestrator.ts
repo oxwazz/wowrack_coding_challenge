@@ -84,6 +84,7 @@ export class DeploymentOrchestrator {
     return definition;
   }
 
+  // skip kebutuhan unit testing
   async deployCase(
     deploymentCase: JobCaseDefinition,
     jobRunId: string = randomUUID(),
@@ -95,6 +96,7 @@ export class DeploymentOrchestrator {
     );
   }
 
+  // skip kebutuhan unit testing
   async deploy(
     jobs: JobDefinition[],
     jobRunId: string = randomUUID(),
