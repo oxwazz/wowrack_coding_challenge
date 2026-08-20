@@ -1,5 +1,5 @@
 ---
-layout: default
+layout: two-cols-header
 ---
 
 <div class="slide-kicker">OVERVIEW</div>
@@ -29,8 +29,8 @@ flowchart LR
     class RULE fan;
 ```
 
+<div v-click>
 
-❌
 ```mermaid
 flowchart LR
     VPC["vpc"] --> SUB["subnet"]
@@ -49,8 +49,13 @@ flowchart LR
     class SUB,ACL,ATT,VM,IP,NAT work;
     class RULE fan;
 ```
+❌
 
-✅
+</div>
+
+
+<div v-click>
+
 ```mermaid
 %%{init: {
   "themeVariables": {
@@ -58,8 +63,8 @@ flowchart LR
   },
   "flowchart": {
     "nodeSpacing": 15,
-    "rankSpacing": 40,
-    "padding": 10
+    "rankSpacing": 60,
+    "padding": 14
   }
 }}%%
 
@@ -81,6 +86,9 @@ flowchart LR
     class SUB,ACL,ATT,VM,NAT work;
     class RULE fan;
 ```
+✅
+
+</div>
 
 <!--
 - kita sudah tau problemnya semua, karna ini sudah dijelaskan kemarin, intinya gimana caranya kita handle job ini se-efisien mungkin

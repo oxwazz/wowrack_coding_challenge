@@ -1,6 +1,7 @@
 ---
 theme: default
-layout: two-cols-header
+layout: center
+class: text-center
 title: Deployment Job Orchestrator · Alur Data End-to-End
 titleTemplate: '%s · TypeScript DAG Orchestrator'
 info: |
@@ -22,7 +23,14 @@ drawings:
 defaults:
   layout: default
   transition: slide-left
+
 ---
+
+# VM Deployment <span>Orchestrator</span>
+
+### Wowrack Coding Challenge
+<div class="h-3"></div>
+Halim + Aditya
 
 ---
 src: ./overview.md
@@ -41,8 +49,18 @@ src: ./features-and-capabilities.md
 ---
 
 ---
-src: ./limitations-and-future-improvements≈.md
+src: ./limitations-and-future-improvements.md
 ---
+
+---
+layout: default
+---
+
+<div class="h-full flex items-center justify-center">
+  <div class="text-center font-bold text-4xl">
+    Selesai. Terima kasih.
+  </div>
+</div>
 
 ---
 layout: default
@@ -209,183 +227,4 @@ Kalau dirangkum, project ini tidak hanya menjalankan sekumpulan request API, tet
 Pada sisi orchestration, DAG memastikan setiap job hanya berjalan setelah dependency-nya selesai. Job yang independen bisa berjalan paralel, sedangkan named instance memungkinkan satu logical step seperti ACL rule dipecah menjadi beberapa job. Sebelum dijalankan, definition juga divalidasi untuk mendeteksi dependency yang hilang, step yang belum terdaftar, atau cycle.
 
 Pada sisi reliability, setiap job mendukung retry dan timeout dengan konfigurasi berjenjang. Jika kegagalan tetap terjadi, orchestrator akan menghentikan flow, menandai job yang terblokir sebagai skipped, lalu melakukan rollback terhadap resource yang sebelumnya berhasil dibuat. Seluruh perubahan status disimpan sebagai append-only log di SQLite, sehingga riwayat eksekusi dapat diperiksa kembali melalui CLI.
--->
-
----
-layout: default
----
-
-<div class="slide-kicker">SYSTEM LAYERS</div>
-
-# Struktur <span>Project</span>
-
-<div class="project-layer-grid">
-  <div class="project-layer interface-layer">
-    <small>ENTRY POINT</small>
-    <b>interfaces/cli</b>
-    <code>app.tsx · cases/*.json</code>
-    <p>UI interaktif, pemilihan skenario, dan input deployment.</p>
-  </div>
-
-  <div class="layer-arrow">→</div>
-
-  <div class="project-layer core-layer">
-    <small>BUSINESS LOGIC</small>
-    <b>core</b>
-    <code>orchestrator · scheduler · executor</code>
-    <p>Validasi DAG, scheduling, retry, timeout, dan rollback.</p>
-  </div>
-
-  <div class="layer-arrow">→</div>
-
-  <div class="project-layer request-layer">
-    <small>INTEGRATION</small>
-    <b>requests</b>
-    <code>deployment-steps · client · api/*</code>
-    <p>Registry step dan adapter request ke Fake CloudStack API.</p>
-  </div>
-
-  <div class="layer-arrow">↔</div>
-
-  <div class="project-layer database-layer">
-    <small>PERSISTENCE</small>
-    <b>database</b>
-    <code>store · migrations · schema</code>
-    <p>Snapshot definition dan append-only status history di SQLite.</p>
-  </div>
-</div>
-
-<div class="project-foundation">
-  <div><b>types.ts</b><span>kontrak data lintas layer</span></div>
-  <div><b>constants.ts</b><span>default dan nilai bersama</span></div>
-  <div><b>utils.ts</b><span>helper generik</span></div>
-  <div><b>__test__/</b><span>test yang mencerminkan modul source</span></div>
-</div>
-
-<div class="statement-strip compact-strip structure-strip">
-  <span class="dot purple"></span>
-  <span>Dependency mengalir dari <strong>interface → core → integration</strong>; kontrak bersama tetap berada di root <code>src/</code>.</span>
-</div>
-
-<!--
-Struktur project dibagi berdasarkan tanggung jawab, bukan berdasarkan fitur deployment tertentu.
-
-Layer interfaces menjadi pintu masuk aplikasi. Di sini ada CLI berbasis Ink serta sebelas file case JSON yang dipakai untuk mendemonstrasikan berbagai kondisi eksekusi.
-
-Layer core berisi business logic yang tidak bergantung pada tampilan CLI: orchestrator sebagai facade, pembentukan dan validasi graph, scheduler, executor, timeout, serta rollback.
-
-Layer requests menghubungkan core dengan Fake CloudStack API. Deployment steps mendefinisikan dependency dan handler setiap step, sementara folder api berisi wrapper command yang spesifik terhadap CloudStack.
-
-Layer database mengisolasi persistence melalui store, schema, dan migration. Types, constants, dan utilities menjadi fondasi yang dipakai lintas layer, sedangkan struktur test mengikuti area source agar perubahan pada setiap layer mudah diverifikasi.
--->
-
----
-layout: default
----
-
-<div class="slide-kicker">PROJECT FLOW · COLLABORATION</div>
-
-# Cara Layer <span>Bekerja Bersama</span>
-
-<div class="collaboration-flow">
-  <div class="collab-node">
-    <small>01 · CLI</small>
-    <b>Pilih case</b>
-    <code>app.tsx</code>
-    <span>Membaca skenario JSON dan memulai deployment.</span>
-  </div>
-  <i>→</i>
-  <div class="collab-node emphasized">
-    <small>02 · ORCHESTRATOR</small>
-    <b>Resolve definition</b>
-    <code>deployment-orchestrator.ts</code>
-    <span>Menggabungkan template, config, dan named instances.</span>
-  </div>
-  <i>→</i>
-  <div class="collab-node emphasized">
-    <small>03 · CORE ENGINE</small>
-    <b>Jalankan DAG</b>
-    <code>scheduler.ts · job-executor.ts</code>
-    <span>Menjalankan job ready; mengatur retry dan failure.</span>
-  </div>
-  <i>→</i>
-  <div class="collab-node">
-    <small>04 · ADAPTER</small>
-    <b>Panggil API</b>
-    <code>deployment-steps.ts</code>
-    <span>Menerjemahkan context job menjadi request CloudStack.</span>
-  </div>
-</div>
-
-<div class="persistence-rail">
-  <div class="rail-line"></div>
-  <div class="rail-label"><b>OrchestratorStore · SQLite</b><span>definition · snapshot · status transition · result · error</span></div>
-  <div class="rail-touchpoints">
-    <span>create run</span>
-    <span>read state</span>
-    <span>append log</span>
-    <span>inspect result</span>
-  </div>
-</div>
-
-<div class="layer-responsibilities">
-  <div><b>Core tetap reusable</b><span>Tidak mengetahui detail UI atau bentuk menu CLI.</span></div>
-  <div><b>Integrasi dapat diganti</b><span>Handler registry menjadi boundary menuju provider API.</span></div>
-  <div><b>State dapat diaudit</b><span>Setiap transisi tersimpan, bukan hanya status terakhir.</span></div>
-</div>
-
-<!--
-Slide ini menunjukkan bagaimana layer tadi bekerja dalam satu deployment.
-
-CLI membaca case JSON dan meminta orchestrator memulai deployment. Orchestrator mengambil job definition dari database, menggabungkannya dengan input dan konfigurasi case, lalu mengubah named instance menjadi runtime job yang konkret.
-
-Hasil resolusi diteruskan ke core engine. Scheduler menentukan job yang ready berdasarkan dependency, sedangkan JobExecutor menangani attempt, timeout, retry, dan pemanggilan handler. Handler di deployment steps kemudian menerjemahkan job context menjadi request yang sesuai untuk Fake CloudStack API.
-
-SQLite bukan hanya output di akhir flow. Orchestrator, scheduler, dan executor menggunakan store sepanjang proses untuk membuat run, membaca state, serta mencatat setiap transisi, result, dan error. Pemisahan ini membuat core reusable, adapter integrasi mudah diganti, dan seluruh eksekusi dapat diaudit.
--->
-
----
-layout: default
----
-
-<div class="slide-kicker">NEXT ITERATION</div>
-
-# Kekurangan & Peluang <span>Improvement</span>
-
-<div class="bullet-columns">
-  <div class="bullet-panel improve-panel">
-    <h3>Reliability & Scale</h3>
-    <ul>
-      <li><b>Belum ada resume otomatis</b> untuk melanjutkan run setelah process crash atau restart.</li>
-      <li><b>Concurrency belum dibatasi</b>; seluruh job ready dapat berjalan sekaligus.</li>
-      <li><b>Retry masih sederhana</b>; perlu exponential backoff, jitter, dan klasifikasi error.</li>
-      <li><b>Masih single-process + SQLite</b>; belum siap untuk distributed worker dan high availability.</li>
-      <li><b>Belum resource-aware</b>; scheduler belum mempertimbangkan priority, quota, atau kapasitas worker.</li>
-    </ul>
-  </div>
-
-  <div class="bullet-panel improve-panel">
-    <h3>Product & Maintainability</h3>
-    <ul>
-      <li><b>Observability terbatas</b>; belum ada metrics, tracing, alerting, atau dashboard.</li>
-      <li><b>Fan-out masih leaf-only</b>; hasil instance belum dapat menjadi dependency step berikutnya.</li>
-      <li><b>Integrasi masih berupa fake API</b>; perlu hardening untuk auth, idempotency, dan error nyata.</li>
-      <li><b>Interface hanya CLI</b>; API atau web UI akan memudahkan monitoring dan operasi tim.</li>
-      <li><b>Belum ada staging E2E</b> untuk menguji perilaku terhadap CloudStack dan network failure nyata.</li>
-    </ul>
-  </div>
-</div>
-
-<div class="priority-note">
-  <b>Prioritas berikutnya:</b> crash recovery, concurrency limit, lalu production observability.
-</div>
-
-<!--
-Walaupun fitur dasarnya sudah cukup lengkap untuk sebuah proof of concept, masih ada beberapa hal yang perlu ditingkatkan sebelum digunakan pada environment production.
-
-Prioritas pertama adalah reliability. Saat ini belum ada mekanisme resume otomatis setelah process restart. Scheduler juga langsung menjalankan seluruh job yang ready, sehingga ke depan perlu concurrency limit, priority, dan awareness terhadap quota atau kapasitas worker. Strategi retry juga sebaiknya dilengkapi exponential backoff dan jitter agar tidak menambah beban saat service sedang bermasalah.
-
-Prioritas berikutnya adalah scalability dan operasional. Arsitektur masih single-process dengan SQLite, sehingga distributed worker dan high availability belum tersedia. Observability juga perlu diperluas dengan metrics, tracing, alerting, dan dashboard. Selain itu, integrasi perlu diuji terhadap CloudStack staging untuk memvalidasi authentication, idempotency, serta berbagai network failure yang tidak sepenuhnya tercakup oleh fake API.
-
-Jadi, tiga improvement yang paling penting untuk tahap berikutnya adalah crash recovery, pembatasan concurrency, dan production observability.
 -->

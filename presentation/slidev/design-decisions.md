@@ -96,6 +96,8 @@ layout: two-cols-header
 
 ::right::
 
+<div v-click>
+
 kelebihan:
 - Mudah dibaca — flow terlihat langsung dari JSON.
 - Tidak perlu hardcode flow — tidak perlu banyak if, await, try/catch, dan rollback manual di kode.
@@ -107,6 +109,8 @@ kekurangan:
 - Perlu membuat DSL sendiri — misalnya when, foreach, retry, timeout, dll.
 - Engine lebih kompleks — perlu resolver, dependency manager, state management, rollback, dll.
 - Expression terbatas — $jobs.x.result.y akhirnya bisa berkembang menjadi bahasa scripting sendiri.
+
+</div>
 
 <!--
 
@@ -137,10 +141,10 @@ layout: two-cols-header
 ::left::
 
 ```md {3-4}
-| id | name          | worflow_id                |
-|----|---------------|---------------------------|
-| 1  | ...           | deploy-vm                 |
-| 2  | ...           | deploy-vm-with-public-ip  |
+| id | name          | definition_id            |
+|----|---------------|--------------------------|
+| 1  | ...           | deploy-vm                |
+| 2  | ...           | deploy-vm-with-public-ip |
 ```
 
 1. deploy vm tanpa public ip
@@ -171,6 +175,8 @@ const definitions = {
 
 ::right::
 
+<div v-click>
+
 kelebihan:
 - simpel karena di db hanya menyimpan definition id saja
 - semua logic ada di code. mau sekomplex apapun harusnya bisa dihandle
@@ -179,6 +185,7 @@ kekurangan:
 - terlalu statis. tiap ada kombinasi baru butuh handle baru di kodingan.
 - akan banyak redudansi code. karena kemiripan kombinasi yang dibuat
 
+</div>
 
 <!--
 Saya juga tidak memilih pendekatan ini karena meskipun implementasinya simpel dan fleksibel dari sisi coding, pendekatan ini akan menjadi terlalu statis ketika jumlah workflow dan kombinasinya bertambah. Setiap ada kombinasi baru, kita perlu menambahkan handling baru di code.
@@ -221,6 +228,8 @@ function createDeploymentSteps(client: FakeCloudStackClient) {
 
 ::right::
 
+<div v-click>
+
 kelebihan:
 - Lebih simpel 
 - Mudah direuse 
@@ -233,6 +242,8 @@ kekurangan:
 - Step baru perlu ditambahkan ke registry
 - Definition tidak menyimpan detail job
 - Custom behavior per workflow lebih terbatas 
+
+</div>
 
 <!--
 kelebihan:
